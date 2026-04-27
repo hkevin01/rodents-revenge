@@ -308,7 +308,7 @@ class GameState:
 
         # Procedural fallback (extreme levels or seeded generation failed)
         wall_count = min(8 + level * 2, 40)
-        block_count = min(24 + level * 8, 150)
+        block_count = min(50 + level * 8, 200)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
         self.last_block_push = None
         self.near_clear_warned = False
@@ -355,7 +355,7 @@ class GameState:
         forbidden: set[tuple[int, int]] = set(cat_spawns)
         if mouse_spawn is not None:
             forbidden.add(mouse_spawn)
-        extra_blocks = min(4 + level * 2, 24)
+        extra_blocks = min(10 + level * 3, 40)
         self._place_random_cells(BLOCK, extra_blocks, forbidden=forbidden)
 
         self.mouse_pos = mouse_spawn if mouse_spawn else self._find_free_cell(prefer_corner=True)
@@ -686,7 +686,7 @@ class GameState:
 
         tier = min((level - 11) // 10, 9)
         tier_wall_segs  = (4, 5, 5, 6, 6, 7, 7, 8, 8, 9)
-        tier_block_cnt  = (22, 25, 28, 30, 32, 34, 36, 38, 40, 42)
+        tier_block_cnt  = (38, 42, 46, 50, 54, 58, 62, 66, 70, 74)
         tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
         tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
 
@@ -1282,6 +1282,9 @@ def run_game() -> None:
                 _draw_touch_btn(screen, _tbtn_restart_rect, "↺ RESTART", (55, 50, 38), (200, 190, 150))
                 hint_go = tiny_font.render("or ENTER = menu  •  R = restart", True, (100, 95, 75))
                 screen.blit(hint_go, (SCREEN_WIDTH // 2 - hint_go.get_width() // 2, btn_y + 48))
+
+    def draw_help_overlay() -> None:
+        """Draw the CONTROLS help panel overlay."""
         panel_w, panel_h = 560, 380
         panel_x = SCREEN_WIDTH // 2 - panel_w // 2
         panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
@@ -1318,7 +1321,7 @@ def run_game() -> None:
             screen.blit(d_surf, (desc_x, row_y))
             row_y += 26
 
-        close = small_font.render("Press H to close", True, (110, 105, 80))
+        close = small_font.render("Tap anywhere or press H to close", True, (110, 105, 80))
         screen.blit(close, (SCREEN_WIDTH // 2 - close.get_width() // 2, panel_y + panel_h - 28))
 
     def draw_virtual_joystick() -> None:
