@@ -303,6 +303,46 @@ class GameState:
         return 0 <= x < self.width and 0 <= y < self.height
 
 
+def _draw_wall_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    ts = rect.width
+    pygame.draw.rect(surface, (72, 62, 52), rect.inflate(-2, -2))
+    for row in range(1, 3):
+        y = rect.y + row * ts // 3
+        pygame.draw.line(surface, (42, 35, 28), (rect.x + 2, y), (rect.x + ts - 3, y), 1)
+    for row in range(3):
+        y0 = rect.y + row * ts // 3 + 1
+        y1 = rect.y + (row + 1) * ts // 3 - 1
+        if row % 2 == 0:
+            x = rect.x + ts // 2
+            pygame.draw.line(surface, (42, 35, 28), (x, y0), (x, y1), 1)
+        else:
+            for x in (rect.x + ts // 4, rect.x + 3 * ts // 4):
+                pygame.draw.line(surface, (42, 35, 28), (x, y0), (x, y1), 1)
+
+
+def _draw_block_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    inner = rect.inflate(-4, -4)
+    pygame.draw.rect(surface, (210, 185, 140), inner, border_radius=3)
+    pygame.draw.rect(surface, (145, 115, 75), inner, 2, border_radius=3)
+    cross = inner.inflate(-6, -6)
+    pygame.draw.line(surface, (145, 115, 75), cross.topleft, cross.bottomright, 1)
+    pygame.draw.line(surface, (145, 115, 75), cross.topright, cross.bottomleft, 1)
+
+
+def _draw_cheese_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    ts = rect.width
+    cx, cy = rect.center
+    pts = [
+        (cx, rect.y + 6),
+        (rect.x + 5, rect.y + ts - 8),
+        (rect.x + ts - 5, rect.y + ts - 8),
+    ]
+    pygame.draw.polygon(surface, (254, 215, 50), pts)
+    pygame.draw.polygon(surface, (195, 158, 18), pts, 2)
+    pygame.draw.circle(surface, (195, 158, 18), (cx - ts // 7, cy + ts // 10), 3)
+    pygame.draw.circle(surface, (195, 158, 18), (cx + ts // 8, cy - ts // 14), 2)
+
+
 def run_game() -> None:
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -340,11 +380,11 @@ def run_game() -> None:
 
                 tile = state.board[y][x]
                 if tile == WALL:
-                    pygame.draw.rect(screen, colors["wall"], rect.inflate(-4, -4), border_radius=5)
+                    _draw_wall_tile(screen, rect)
                 elif tile == BLOCK:
-                    pygame.draw.rect(screen, colors["block"], rect.inflate(-6, -6), border_radius=4)
+                    _draw_block_tile(screen, rect)
                 elif tile == CHEESE:
-                    pygame.draw.circle(screen, colors["cheese"], rect.center, TILE_SIZE // 3)
+                    _draw_cheese_tile(screen, rect)
 
         for cx, cy in state.cats:
             rect = pygame.Rect(cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
