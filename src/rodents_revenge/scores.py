@@ -13,17 +13,21 @@ def load_scores() -> list[dict]:
     try:
         data = json.loads(_SCORES_FILE.read_text())
         if isinstance(data, list):
+            # Normalise legacy entries that lack an 'initials' field
+            for entry in data:
+                entry.setdefault("initials", "---")
             return data
     except (json.JSONDecodeError, OSError):
         pass
     return []
 
 
-def save_score(score: int, level: int) -> None:
+def save_score(score: int, level: int, initials: str = "---") -> None:
     if score <= 0:
         return
+    inits = (initials.strip().upper() or "---")[:3].ljust(3, "-")
     scores = load_scores()
-    scores.append({"score": score, "level": level})
+    scores.append({"score": score, "level": level, "initials": inits})
     scores.sort(key=lambda s: s["score"], reverse=True)
     try:
         _SCORES_FILE.write_text(json.dumps(scores[:MAX_SCORES], indent=2))

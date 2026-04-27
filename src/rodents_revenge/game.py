@@ -303,6 +303,10 @@ class GameState:
         if self._apply_preset_level(level):
             return
 
+        if self._apply_seeded_level(level):
+            return
+
+        # Procedural fallback (extreme levels or seeded generation failed)
         wall_count = min(8 + level * 2, 40)
         block_count = min(24 + level * 8, 150)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
@@ -631,6 +635,138 @@ class GameState:
 
         return random.choice(candidates)
 
+    def _validate_solvable(self) -> bool:
+        """Basic solvability check used by the seeded level generator."""
+        from collections import deque
+
+        mx, my = self.mouse_pos
+
+        # Mouse must have at least 1 free orthogonal neighbour
+        has_free = any(
+            self.in_bounds(mx + dx, my + dy)
+            and self.board[my + dy][mx + dx] in (EMPTY, CHEESE)
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        )
+        if not has_free:
+            return False
+
+        # BFS from mouse through EMPTY/CHEESE — must reach ≥ 12 cells
+        visited: set[tuple[int, int]] = {(mx, my)}
+        queue: deque[tuple[int, int]] = deque([(mx, my)])
+        reachable = 0
+        while queue:
+            cx, cy = queue.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                if (nx, ny) in visited or not self.in_bounds(nx, ny):
+                    continue
+                if self.board[ny][nx] in (EMPTY, CHEESE):
+                    visited.add((nx, ny))
+                    queue.append((nx, ny))
+                    reachable += 1
+
+        if reachable < 12:
+            return False
+
+        # No cat may start already trapped
+        for cat in self.cats:
+            if self.is_cat_trapped(*cat):
+                return False
+
+        return True
+
+    def _apply_seeded_level(self, level: int) -> bool:
+        """Generate a deterministic validated level for levels ≥ 11.
+
+        Uses a fixed seed per level so every playthrough gets the same map.
+        Retries up to 400 seeds until solvability constraints are met.
+        """
+        if level < 11:
+            return False
+
+        tier = min((level - 11) // 10, 9)
+        tier_wall_segs  = (4, 5, 5, 6, 6, 7, 7, 8, 8, 9)
+        tier_block_cnt  = (22, 25, 28, 30, 32, 34, 36, 38, 40, 42)
+        tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
+        tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
+
+        wall_segs  = tier_wall_segs[tier]
+        block_cnt  = tier_block_cnt[tier]
+        cheese_cnt = tier_cheese_cnt[tier]
+        cat_cnt    = max(1, tier_cat_cnt[tier] + self.cat_count_offset)
+
+        for attempt in range(400):
+            seed = level * 7919 + attempt
+            rng = random.Random(seed)
+
+            # Clear interior (perimeter walls already set by reset_level)
+            for iy in range(1, self.height - 1):
+                for ix in range(1, self.width - 1):
+                    self.board[iy][ix] = EMPTY
+
+            # Place wall segments to create corridors / rooms
+            for _ in range(wall_segs):
+                wx = rng.randint(2, self.width - 4)
+                wy = rng.randint(2, self.height - 4)
+                horiz = rng.choice((True, False))
+                length = rng.randint(3, min(6, self.width // 3))
+                for i in range(length):
+                    cx = wx + (i if horiz else 0)
+                    cy = wy + (0 if horiz else i)
+                    if 1 <= cx < self.width - 1 and 1 <= cy < self.height - 1:
+                        self.board[cy][cx] = WALL
+
+            # Collect free interior cells
+            free = [
+                (x, y)
+                for y in range(2, self.height - 2)
+                for x in range(2, self.width - 2)
+                if self.board[y][x] == EMPTY
+            ]
+            if len(free) < cat_cnt + block_cnt + cheese_cnt + 5:
+                continue
+
+            # Mouse: spawn in left third
+            left_pool = [(x, y) for x, y in free if x <= self.width // 3]
+            if not left_pool:
+                left_pool = free[:]
+            rng.shuffle(left_pool)
+            mouse = left_pool[0]
+            self.mouse_pos = mouse
+
+            # Cats: far from mouse, spread across board
+            far_pool = sorted(
+                [(x, y) for x, y in free if (x, y) != mouse
+                 and abs(x - mouse[0]) + abs(y - mouse[1]) >= 8],
+                key=lambda c: -(abs(c[0] - mouse[0]) + abs(c[1] - mouse[1])),
+            )
+            if len(far_pool) < cat_cnt:
+                continue
+            spread = far_pool[:max(cat_cnt * 3, 12)]
+            rng.shuffle(spread)
+            self.cats = spread[:cat_cnt]
+
+            forbidden = {mouse} | set(self.cats)
+
+            # Blocks
+            block_pool = [c for c in free if c not in forbidden]
+            rng.shuffle(block_pool)
+            for bx, by in block_pool[:block_cnt]:
+                self.board[by][bx] = BLOCK
+            remaining = block_pool[block_cnt:]
+
+            # Cheese
+            for cx2, cy2 in remaining[:cheese_cnt]:
+                self.board[cy2][cx2] = CHEESE
+
+            self.last_block_push = None
+            self.near_clear_warned = False
+
+            if self._validate_solvable():
+                return True
+
+        return False  # extremely unlikely — fall back to procedural
+
     def _cat_at(self, x: int, y: int) -> bool:
         return (x, y) in self.cats
 
@@ -638,30 +774,155 @@ class GameState:
         return 0 <= x < self.width and 0 <= y < self.height
 
 
-def _draw_wall_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+# ---------------------------------------------------------------------------
+# Room themes — each 10 levels the player moves to a different room
+# ---------------------------------------------------------------------------
+ROOM_THEMES = [
+    {
+        "name": "Kitchen",
+        "floor_style": "checker",
+        "floor_a": (228, 222, 210),   # cream ceramic tile
+        "floor_b": (52,  48,  44),    # near-black ceramic tile
+        "floor_grout": (190, 185, 175),
+        "wall_face": (178, 156, 118),  # terracotta / subway tile
+        "wall_dark": (118, 100, 72),
+        "block_face": (218, 192, 148),
+        "block_edge": (148, 118, 78),
+        "grid_col": (185, 178, 162),
+    },
+    {
+        "name": "Dining Room",
+        "floor_style": "planks",
+        "floor_a": (168, 112, 62),    # warm oak
+        "floor_b": (142, 92,  48),    # darker oak
+        "floor_grout": (120, 80, 40),
+        "wall_face": (188, 148, 102),  # warm cream/tan wainscot
+        "wall_dark": (132, 100, 65),
+        "block_face": (202, 168, 118),
+        "block_edge": (148, 112, 72),
+        "grid_col": (148, 104, 58),
+    },
+    {
+        "name": "Living Room",
+        "floor_style": "carpet",
+        "floor_a": (132, 58,  68),    # burgundy carpet
+        "floor_b": (112, 44,  54),
+        "floor_grout": (105, 38, 48),
+        "wall_face": (168, 132, 98),   # warm sage/tan
+        "wall_dark": (118, 92, 62),
+        "block_face": (198, 162, 112),
+        "block_edge": (142, 108, 68),
+        "grid_col": (118, 50, 60),
+    },
+    {
+        "name": "Bedroom",
+        "floor_style": "carpet",
+        "floor_a": (188, 170, 212),   # soft lavender carpet
+        "floor_b": (168, 150, 192),
+        "floor_grout": (155, 138, 178),
+        "wall_face": (198, 178, 222),  # light lilac
+        "wall_dark": (142, 124, 168),
+        "block_face": (205, 185, 228),
+        "block_edge": (155, 132, 182),
+        "grid_col": (172, 155, 198),
+    },
+    {
+        "name": "Bathroom",
+        "floor_style": "checker",
+        "floor_a": (222, 235, 248),   # pale sky-blue tile
+        "floor_b": (178, 212, 232),   # mid-blue tile
+        "floor_grout": (155, 188, 212),
+        "wall_face": (158, 200, 222),  # seafoam / aqua
+        "wall_dark": (108, 158, 185),
+        "block_face": (198, 222, 238),
+        "block_edge": (122, 172, 202),
+        "grid_col": (172, 208, 228),
+    },
+    {
+        "name": "Attic",
+        "floor_style": "planks",
+        "floor_a": (158, 134, 108),   # dusty rough planks
+        "floor_b": (134, 112, 88),
+        "floor_grout": (108, 88, 68),
+        "wall_face": (108, 92, 72),    # exposed beam / grey
+        "wall_dark": (74, 62, 48),
+        "block_face": (168, 142, 110),
+        "block_edge": (118, 96, 70),
+        "grid_col": (138, 116, 92),
+    },
+]
+
+
+def get_room_theme(level: int) -> dict:
+    """Return the room theme dict for the given level (cycles every 10 levels)."""
+    idx = (level - 1) // 10 % len(ROOM_THEMES)
+    return ROOM_THEMES[idx]
+
+
+def _draw_floor_tile(
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    gx: int,
+    gy: int,
+    theme: dict,
+) -> None:
+    """Draw a single floor tile with the room's pattern."""
+    style = theme["floor_style"]
+    if style == "checker":
+        col = theme["floor_a"] if (gx + gy) % 2 == 0 else theme["floor_b"]
+        pygame.draw.rect(surface, col, rect)
+        # thin grout line
+        pygame.draw.rect(surface, theme["floor_grout"], rect, 1)
+    elif style == "planks":
+        col = theme["floor_a"] if (gy // 2) % 2 == 0 else theme["floor_b"]
+        pygame.draw.rect(surface, col, rect)
+        # plank seam every 2 rows
+        if gy % 2 == 1:
+            pygame.draw.line(surface, theme["floor_grout"],
+                             rect.bottomleft, (rect.right - 1, rect.bottom), 1)
+        pygame.draw.rect(surface, theme["grid_col"], rect, 1)
+    else:  # carpet
+        # subtle woven texture — alternate tiny brighter/darker diamonds
+        col = theme["floor_a"] if (gx + gy * 3) % 5 < 3 else theme["floor_b"]
+        pygame.draw.rect(surface, col, rect)
+        # faint grid stitch
+        pygame.draw.rect(surface, theme["floor_grout"], rect, 1)
+
+
+def _draw_wall_tile(
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    face: tuple[int, int, int] = (72, 62, 52),
+    dark: tuple[int, int, int] = (42, 35, 28),
+) -> None:
     ts = rect.width
-    pygame.draw.rect(surface, (72, 62, 52), rect.inflate(-2, -2))
+    pygame.draw.rect(surface, face, rect.inflate(-2, -2))
     for row in range(1, 3):
         y = rect.y + row * ts // 3
-        pygame.draw.line(surface, (42, 35, 28), (rect.x + 2, y), (rect.x + ts - 3, y), 1)
+        pygame.draw.line(surface, dark, (rect.x + 2, y), (rect.x + ts - 3, y), 1)
     for row in range(3):
         y0 = rect.y + row * ts // 3 + 1
         y1 = rect.y + (row + 1) * ts // 3 - 1
         if row % 2 == 0:
             x = rect.x + ts // 2
-            pygame.draw.line(surface, (42, 35, 28), (x, y0), (x, y1), 1)
+            pygame.draw.line(surface, dark, (x, y0), (x, y1), 1)
         else:
             for x in (rect.x + ts // 4, rect.x + 3 * ts // 4):
-                pygame.draw.line(surface, (42, 35, 28), (x, y0), (x, y1), 1)
+                pygame.draw.line(surface, dark, (x, y0), (x, y1), 1)
 
 
-def _draw_block_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+def _draw_block_tile(
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    face: tuple[int, int, int] = (210, 185, 140),
+    edge: tuple[int, int, int] = (145, 115, 75),
+) -> None:
     inner = rect.inflate(-4, -4)
-    pygame.draw.rect(surface, (210, 185, 140), inner, border_radius=3)
-    pygame.draw.rect(surface, (145, 115, 75), inner, 2, border_radius=3)
+    pygame.draw.rect(surface, face, inner, border_radius=3)
+    pygame.draw.rect(surface, edge, inner, 2, border_radius=3)
     cross = inner.inflate(-6, -6)
-    pygame.draw.line(surface, (145, 115, 75), cross.topleft, cross.bottomright, 1)
-    pygame.draw.line(surface, (145, 115, 75), cross.topright, cross.bottomleft, 1)
+    pygame.draw.line(surface, edge, cross.topleft, cross.bottomright, 1)
+    pygame.draw.line(surface, edge, cross.topright, cross.bottomleft, 1)
 
 
 def _draw_cheese_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
@@ -739,7 +1000,7 @@ def run_game() -> None:
         "wall": (85, 72, 60),
         "block": (120, 102, 84),
         "mouse": (190, 230, 120),
-        "cat": (235, 102, 75),
+        "cat": (255, 130, 0),
         "cheese": (254, 220, 90),
         "hud": (25, 23, 20),
         "text": (235, 226, 206),
@@ -768,6 +1029,10 @@ def run_game() -> None:
     new_high_score = False
     scores = load_scores()
     running = True
+
+    entering_initials = False
+    entry_initials = ""
+    initials_key_rects: list[tuple[str, pygame.Rect]] = []
 
     # --- Virtual joystick touch state ---
     # Floats to wherever the player first touches (left half of screen)
@@ -825,6 +1090,7 @@ def run_game() -> None:
 
     def draw_board() -> None:
         _tween_dests = {(tw["gx1"], tw["gy1"]) for tw in block_tweens}
+        _theme = get_room_theme(state.level)
         # ------ line-of-sight alert: update cat_alert dict ------
         mx, my = state.mouse_pos
         alive_positions = set(state.cats)
@@ -856,19 +1122,22 @@ def run_game() -> None:
                 if cat_alert[cat] <= 0:
                     del cat_alert[cat]
         # ----------------------------------------------------------
-        screen.fill(colors["bg"])
+        # Fill entire screen with the room's dominant floor color first
+        screen.fill(_theme["floor_a"])
         for y in range(state.height):
             for x in range(state.width):
                 rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
-                pygame.draw.rect(screen, colors["grid"], rect, 1)
 
                 tile = state.board[y][x]
                 if tile == WALL:
-                    _draw_wall_tile(screen, rect)
+                    _draw_wall_tile(screen, rect, _theme["wall_face"], _theme["wall_dark"])
                 elif tile == BLOCK and (x, y) not in _tween_dests:
-                    _draw_block_tile(screen, rect)
+                    _draw_block_tile(screen, rect, _theme["block_face"], _theme["block_edge"])
                 elif tile == CHEESE:
+                    _draw_floor_tile(screen, rect, x, y, _theme)
                     _draw_cheese_tile(screen, rect)
+                else:
+                    _draw_floor_tile(screen, rect, x, y, _theme)
 
         for cx, cy in state.cats:
             rect = pygame.Rect(cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
@@ -929,7 +1198,7 @@ def run_game() -> None:
             t = tw["t"]
             px = int(tw["gx0"] * TILE_SIZE + (tw["gx1"] - tw["gx0"]) * TILE_SIZE * t)
             py = int(tw["gy0"] * TILE_SIZE + HUD_HEIGHT + (tw["gy1"] - tw["gy0"]) * TILE_SIZE * t)
-            _draw_block_tile(screen, pygame.Rect(px, py, TILE_SIZE, TILE_SIZE))
+            _draw_block_tile(screen, pygame.Rect(px, py, TILE_SIZE, TILE_SIZE), _theme["block_face"], _theme["block_edge"])
 
         hud_rect = pygame.Rect(0, 0, SCREEN_WIDTH, HUD_HEIGHT)
         pygame.draw.rect(screen, colors["hud"], hud_rect)
@@ -939,6 +1208,9 @@ def run_game() -> None:
             colors["text"],
         )
         screen.blit(hud_text, (16, 18))
+        # Room name badge
+        room_surf = small_font.render(_theme["name"], True, (200, 188, 148))
+        screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
         # HUD touch buttons — Pause and Help, right side
         _tbtn_pause_rect.topleft = (SCREEN_WIDTH - TBTN_W * 2 - 12, HUD_HEIGHT // 2 - TBTN_H // 2)
         _tbtn_help_rect.topleft  = (SCREEN_WIDTH - TBTN_W - 6,      HUD_HEIGHT // 2 - TBTN_H // 2)
@@ -995,31 +1267,21 @@ def run_game() -> None:
             screen.blit(text1, (SCREEN_WIDTH // 2 - text1.get_width() // 2, y0))
             if new_high_score:
                 hs_surf = font.render("NEW HIGH SCORE!", True, (255, 220, 50))
-                screen.blit(hs_surf,   (SCREEN_WIDTH // 2 - hs_surf.get_width()   // 2, y0 + 40))
-                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 82))
+                screen.blit(hs_surf,    (SCREEN_WIDTH // 2 - hs_surf.get_width()    // 2, y0 + 40))
+                screen.blit(score_surf, (SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 82))
             else:
-                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 40))
-            # Large touch buttons
-            btn_y = SCREEN_HEIGHT // 2 + 20
-            _tbtn_menu_rect.center    = (SCREEN_WIDTH // 2 - 100, btn_y)
-            _tbtn_restart_rect.center = (SCREEN_WIDTH // 2 + 100, btn_y)
-            _draw_touch_btn(screen, _tbtn_menu_rect,    "⬅ MENU",    (55, 50, 38), (200, 190, 150))
-            _draw_touch_btn(screen, _tbtn_restart_rect, "↺ RESTART", (55, 50, 38), (200, 190, 150))
-            hint = tiny_font.render("or ENTER = menu  •  R = restart", True, (100, 95, 75))
-            screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, btn_y + 48))
-
-        if state.paused:
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 120))
-            screen.blit(overlay, (0, 0))
-            p1 = font.render("PAUSED", True, (220, 215, 180))
-            screen.blit(p1, (SCREEN_WIDTH // 2 - p1.get_width() // 2, SCREEN_HEIGHT // 2 - 60))
-            _tbtn_resume_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10)
-            _draw_touch_btn(screen, _tbtn_resume_rect, "▶ RESUME", (60, 110, 70), (210, 240, 200))
-            hint2 = tiny_font.render("or tap ⏸ PAUSE again", True, (120, 115, 90))
-            screen.blit(hint2, (SCREEN_WIDTH // 2 - hint2.get_width() // 2, SCREEN_HEIGHT // 2 + 52))
-
-    def draw_help_overlay() -> None:
+                screen.blit(score_surf, (SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 40))
+            if entering_initials:
+                init_hint = small_font.render("Enter your initials ↓", True, (255, 220, 80))
+                screen.blit(init_hint, (SCREEN_WIDTH // 2 - init_hint.get_width() // 2, y0 + 130))
+            else:
+                btn_y = SCREEN_HEIGHT // 2 + 20
+                _tbtn_menu_rect.center    = (SCREEN_WIDTH // 2 - 100, btn_y)
+                _tbtn_restart_rect.center = (SCREEN_WIDTH // 2 + 100, btn_y)
+                _draw_touch_btn(screen, _tbtn_menu_rect,    "⬅ MENU",    (55, 50, 38), (200, 190, 150))
+                _draw_touch_btn(screen, _tbtn_restart_rect, "↺ RESTART", (55, 50, 38), (200, 190, 150))
+                hint_go = tiny_font.render("or ENTER = menu  •  R = restart", True, (100, 95, 75))
+                screen.blit(hint_go, (SCREEN_WIDTH // 2 - hint_go.get_width() // 2, btn_y + 48))
         panel_w, panel_h = 560, 380
         panel_x = SCREEN_WIDTH // 2 - panel_w // 2
         panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
@@ -1100,6 +1362,80 @@ def run_game() -> None:
 
         screen.blit(joy_surf, (vjoy_cx - sc, vjoy_cy - sc))
 
+    def draw_initials_entry() -> None:
+        """Full-screen overlay for entering 3-character initials on a high score."""
+        nonlocal initials_key_rects
+
+        # Dark panel
+        panel_w, panel_h = 600, 390
+        panel_x = SCREEN_WIDTH // 2 - panel_w // 2
+        panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
+        bg = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        bg.fill((10, 8, 6, 230))
+        screen.blit(bg, (panel_x, panel_y))
+        pygame.draw.rect(screen, (255, 215, 50), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=8)
+
+        # Title
+        t1 = font.render("NEW HIGH SCORE!", True, (255, 220, 50))
+        screen.blit(t1, (SCREEN_WIDTH // 2 - t1.get_width() // 2, panel_y + 14))
+        t2 = small_font.render("Enter your initials:", True, (210, 200, 160))
+        screen.blit(t2, (SCREEN_WIDTH // 2 - t2.get_width() // 2, panel_y + 50))
+
+        # Three character boxes
+        box_w, box_h = 58, 70
+        box_gap = 16
+        boxes_total = 3 * box_w + 2 * box_gap
+        bx0 = SCREEN_WIDTH // 2 - boxes_total // 2
+        by0 = panel_y + 86
+        for i in range(3):
+            bx = bx0 + i * (box_w + box_gap)
+            active = i == len(entry_initials)
+            box_col = (80, 70, 50) if not active else (100, 90, 60)
+            border_col = (255, 215, 50) if active else (150, 140, 100)
+            pygame.draw.rect(screen, box_col, (bx, by0, box_w, box_h), border_radius=6)
+            pygame.draw.rect(screen, border_col, (bx, by0, box_w, box_h), 2, border_radius=6)
+            if i < len(entry_initials):
+                ch_surf = title_font.render(entry_initials[i], True, (255, 230, 80))
+                screen.blit(ch_surf, (bx + box_w // 2 - ch_surf.get_width() // 2,
+                                      by0 + box_h // 2 - ch_surf.get_height() // 2))
+            elif active and (animation_frame // 20) % 2 == 0:
+                cx2 = bx + box_w // 2
+                pygame.draw.line(screen, (255, 215, 50), (cx2, by0 + 12), (cx2, by0 + box_h - 12), 3)
+
+        # Virtual A-Z keyboard (9 cols x 3 rows)
+        keys_layout = [list("ABCDEFGHI"), list("JKLMNOPQR"), list("STUVWXYZ⌫")]
+        btn_w2, btn_h2 = 50, 42
+        btn_gap = 5
+        row_w = 9 * btn_w2 + 8 * btn_gap
+        kx0 = SCREEN_WIDTH // 2 - row_w // 2
+        ky0 = panel_y + 178
+        new_key_rects: list[tuple[str, pygame.Rect]] = []
+        for row_i, row in enumerate(keys_layout):
+            for col_i, ch in enumerate(row):
+                kx = kx0 + col_i * (btn_w2 + btn_gap)
+                ky = ky0 + row_i * (btn_h2 + btn_gap)
+                r = pygame.Rect(kx, ky, btn_w2, btn_h2)
+                is_bksp = ch == "⌫"
+                col = (80, 30, 30) if is_bksp else (55, 52, 40)
+                pygame.draw.rect(screen, col, r, border_radius=6)
+                pygame.draw.rect(screen, (130, 120, 90), r, 1, border_radius=6)
+                lbl = small_font.render(ch, True, (240, 230, 180))
+                screen.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
+                new_key_rects.append((ch, r))
+
+        # DONE button
+        done_r = pygame.Rect(0, 0, 180, 50)
+        done_r.center = (SCREEN_WIDTH // 2, ky0 + 3 * (btn_h2 + btn_gap) + 10)
+        done_col = (50, 110, 60) if entry_initials else (45, 45, 35)
+        pygame.draw.rect(screen, done_col, done_r, border_radius=10)
+        pygame.draw.rect(screen, (120, 200, 130) if entry_initials else (80, 80, 60), done_r, 2, border_radius=10)
+        done_lbl = small_font.render("✓  DONE", True, (200, 240, 200) if entry_initials else (120, 120, 100))
+        screen.blit(done_lbl, (done_r.centerx - done_lbl.get_width() // 2,
+                                done_r.centery - done_lbl.get_height() // 2))
+        new_key_rects.append(("✓", done_r))
+        initials_key_rects = new_key_rects
+
+
     def draw_title_screen() -> None:
         screen.fill((10, 8, 6))
         title_surf = title_font.render(GAME_TITLE.upper(), True, (220, 200, 80))
@@ -1112,6 +1448,7 @@ def run_game() -> None:
             for i, entry in enumerate(scores[:5]):
                 line = small_font.render(
                     f"{i + 1}.  {entry['score']:05d}   LVL {entry['level']:02d}",
+                                        f"{i + 1}.  {entry.get('initials','---')}  {entry['score']:05d}   LVL {entry['level']:02d}",
                     True,
                     (255, 220, 60) if i == 0 else (200, 190, 160),
                 )
@@ -1204,6 +1541,20 @@ def run_game() -> None:
                             block_tweens.clear()
                             score_saved = False
                             new_high_score = False
+                        # Initials virtual keyboard (shown over game-over overlay)
+                        elif entering_initials:
+                            for key_char, key_rect in initials_key_rects:
+                                if key_rect.collidepoint(sx, sy):
+                                    if key_char == "⌫":
+                                        entry_initials = entry_initials[:-1]
+                                    elif key_char == "✓" and entry_initials:
+                                        save_score(state.score, state.level, entry_initials)
+                                        score_saved = True
+                                        entering_initials = False
+                                        scores = load_scores()
+                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "✓"):
+                                        entry_initials += key_char
+                                    break
                     # Pause resume button
                     elif state.paused:
                         if _tbtn_resume_rect.collidepoint(sx, sy):
@@ -1267,6 +1618,16 @@ def run_game() -> None:
                             block_tweens.clear()
                             score_saved = False
                             new_high_score = False
+                        elif entering_initials:
+                            if pygame.K_a <= event.key <= pygame.K_z and len(entry_initials) < 3:
+                                entry_initials += chr(event.key - pygame.K_a + ord("A"))
+                            elif event.key == pygame.K_BACKSPACE:
+                                entry_initials = entry_initials[:-1]
+                            elif event.key == pygame.K_RETURN and entry_initials:
+                                save_score(state.score, state.level, entry_initials)
+                                score_saved = True
+                                entering_initials = False
+                                scores = load_scores()
                     elif event.key == pygame.K_p:
                         state.paused = not state.paused
                     elif event.key == pygame.K_h:
@@ -1326,9 +1687,13 @@ def run_game() -> None:
 
             if state.game_over and not score_saved:
                 new_high_score = is_high_score(state.score)
-                save_score(state.score, state.level)
-                score_saved = True
-                scores = load_scores()
+                if new_high_score and not entering_initials:
+                    entering_initials = True
+                    entry_initials = ""
+                elif not new_high_score:
+                    save_score(state.score, state.level)
+                    score_saved = True
+                    scores = load_scores()
 
             if state.last_block_push is not None:
                 fx, fy, tx, ty = state.last_block_push
@@ -1347,6 +1712,8 @@ def run_game() -> None:
         if phase == "playing":
             draw_board()
             draw_virtual_joystick()
+            if entering_initials:
+                draw_initials_entry()
             if show_help:
                 draw_help_overlay()
         else:
