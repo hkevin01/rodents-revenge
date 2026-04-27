@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import array
+import heapq
+import math
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +27,7 @@ CHEESE = 3
 MOUSE_STEP_SCORE = 1
 CHEESE_SCORE = 25
 TRAP_SCORE = 100
+MULTI_TRAP_BONUS = 150
 
 CAT_MOVE_DELAY_FRAMES = 8
 
@@ -87,6 +91,13 @@ class GameState:
     win_level_flash: int = 0
     respawn_flash: int = 0
     level_clear_delay: int = 0
+    trap_combo_flash: int = 0
+    last_trap_count: int = 0
+    paused: bool = False
+    cat_delay_bonus: int = 0
+    cat_count_offset: int = 0
+    last_block_push: tuple[int, int, int, int] | None = None
+    pending_sounds: list[str] = field(default_factory=list)
     board: list[list[int]] = field(default_factory=list)
     mouse_pos: tuple[int, int] = (1, 1)
     cats: list[tuple[int, int]] = field(default_factory=list)
@@ -98,9 +109,13 @@ class GameState:
     def reset_level(self, level: int) -> None:
         self.level = level
         self.game_over = False
+        self.paused = False
         self.win_level_flash = 30
         self.respawn_flash = 0
         self.level_clear_delay = 0
+        self.trap_combo_flash = 0
+        self.last_trap_count = 0
+        self.pending_sounds = []
         self.board = [[EMPTY for _ in range(self.width)] for _ in range(self.height)]
 
         for x in range(self.width):
@@ -112,7 +127,8 @@ class GameState:
 
         wall_count = min(8 + level * 2, 40)
         block_count = min(18 + level * 6, 120)
-        cat_count = min(2 + level, 12)
+        cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
+        self.last_block_push = None
 
         self._place_random_cells(WALL, wall_count)
         self._place_random_cells(BLOCK, block_count)
@@ -128,7 +144,7 @@ class GameState:
         self.reset_level(1)
 
     def handle_player_move(self, dx: int, dy: int) -> bool:
-        if self.game_over or self.level_clear_delay > 0:
+        if self.game_over or self.level_clear_delay > 0 or self.paused:
             return False
 
         if dx == 0 and dy == 0:
@@ -152,6 +168,9 @@ class GameState:
             if target == CHEESE:
                 self.score += CHEESE_SCORE
                 self.board[ny][nx] = EMPTY
+                self.pending_sounds.append("cheese")
+            else:
+                self.pending_sounds.append("move")
             self.score += MOUSE_STEP_SCORE
             return True
 
@@ -165,6 +184,8 @@ class GameState:
             self.board[ny][nx] = EMPTY
             self.mouse_pos = (nx, ny)
             self.score += MOUSE_STEP_SCORE
+            self.pending_sounds.append("move")
+            self.last_block_push = (nx, ny, bx, by)
             return True
 
         return False
@@ -191,17 +212,26 @@ class GameState:
 
     def _resolve_trapped_cats(self) -> None:
         survivors: list[tuple[int, int]] = []
+        trap_count = 0
         for cat in self.cats:
             if self.is_cat_trapped(*cat):
                 cx, cy = cat
                 self.board[cy][cx] = CHEESE
-                self.score += TRAP_SCORE
+                trap_count += 1
             else:
                 survivors.append(cat)
         self.cats = survivors
+        if trap_count > 0:
+            combo_bonus = (trap_count - 1) * MULTI_TRAP_BONUS
+            self.score += trap_count * TRAP_SCORE + combo_bonus
+            self.last_trap_count = trap_count
+            self.trap_combo_flash = 60
+            self.pending_sounds.append("combo" if trap_count >= 2 else "trap")
+
         if not self.cats and not self.game_over and self.level_clear_delay == 0:
             self.score += 300
             self.level_clear_delay = 90
+            self.pending_sounds.append("clear")
 
     def is_cat_trapped(self, x: int, y: int) -> bool:
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -218,6 +248,7 @@ class GameState:
 
     def _lose_life(self) -> None:
         self.lives -= 1
+        self.pending_sounds.append("death")
         if self.lives <= 0:
             self.game_over = True
         else:
@@ -225,32 +256,58 @@ class GameState:
             self.mouse_pos = self._find_free_cell(prefer_corner=True)
 
     def _next_cat_position(self, cat: tuple[int, int], occupied: set[tuple[int, int]]) -> tuple[int, int]:
-        x, y = cat
-        mx, my = self.mouse_pos
+        """BFS to find the shortest path toward the mouse, avoiding walls/blocks/other cats."""
+        start = cat
+        goal = self.mouse_pos
 
-        horiz = (1 if mx > x else -1, 0) if mx != x else None
-        vert = (0, 1 if my > y else -1) if my != y else None
+        # BFS
+        from collections import deque
+        queue: deque[tuple[int, int]] = deque([start])
+        came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
 
-        attempts: list[tuple[int, int]] = []
-        if horiz:
-            attempts.append(horiz)
-        if vert:
-            attempts.append(vert)
-        random_dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        random.shuffle(random_dirs)
-        attempts.extend(random_dirs)
+        while queue:
+            current = queue.popleft()
+            if current == goal:
+                break
+            cx, cy = current
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                if not self.in_bounds(nx, ny):
+                    continue
+                if (nx, ny) in came_from:
+                    continue
+                if self.board[ny][nx] in (BLOCK, WALL):
+                    continue
+                # Allow entering the mouse's cell but not other cats' cells
+                if (nx, ny) in occupied and (nx, ny) != goal:
+                    continue
+                came_from[(nx, ny)] = current
+                queue.append((nx, ny))
 
-        for dx, dy in attempts:
-            nx, ny = x + dx, y + dy
-            if not self.in_bounds(nx, ny):
-                continue
-            if (nx, ny) in occupied:
-                continue
-            if self.board[ny][nx] in (BLOCK, WALL):
-                continue
-            return nx, ny
+        # Reconstruct the first step toward goal
+        if goal not in came_from:
+            # No path found — try any free adjacent cell (random fallback)
+            dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            random.shuffle(dirs)
+            for dx, dy in dirs:
+                nx, ny = start[0] + dx, start[1] + dy
+                if not self.in_bounds(nx, ny):
+                    continue
+                if self.board[ny][nx] in (BLOCK, WALL):
+                    continue
+                if (nx, ny) in occupied and (nx, ny) != goal:
+                    continue
+                return nx, ny
+            return start  # truly stuck
 
-        return x, y
+        # Walk back from goal to find the first step
+        step: tuple[int, int] = goal
+        while came_from[step] != start:
+            prev = came_from[step]
+            if prev is None:
+                return start
+            step = prev
+        return step
 
     def _place_random_cells(self, kind: int, count: int) -> None:
         placed = 0
@@ -343,14 +400,55 @@ def _draw_cheese_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.circle(surface, (195, 158, 18), (cx + ts // 8, cy - ts // 14), 2)
 
 
+def _gen_tone(freq: float, dur: float, vol: float = 0.25, rate: int = 22050) -> pygame.mixer.Sound:
+    n = int(rate * dur)
+    buf = array.array("h", [int(32767 * vol * math.sin(2 * math.pi * freq * i / rate)) for i in range(n)])
+    return pygame.mixer.Sound(buffer=buf)
+
+
+def _gen_sweep(f0: float, f1: float, dur: float, vol: float = 0.25, rate: int = 22050) -> pygame.mixer.Sound:
+    n = int(rate * dur)
+    buf = array.array("h", [
+        int(32767 * vol * math.sin(2 * math.pi * (f0 + (f1 - f0) * i / n) * i / rate))
+        for i in range(n)
+    ])
+    return pygame.mixer.Sound(buffer=buf)
+
+
+def _make_icon() -> pygame.Surface:
+    """Procedural 32x32 window icon: cheese wedge on dark background."""
+    size = 32
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    surf.fill((18, 16, 13))
+    pts = [(size // 2, 4), (4, size - 4), (size - 4, size - 4)]
+    pygame.draw.polygon(surf, (254, 215, 50), pts)
+    pygame.draw.polygon(surf, (195, 158, 18), pts, 2)
+    pygame.draw.circle(surf, (195, 158, 18), (13, 22), 3)
+    pygame.draw.circle(surf, (195, 158, 18), (21, 17), 2)
+    return surf
+
+
 def run_game() -> None:
+    pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Rodent's Revenge Clone")
+    pygame.display.set_caption("Rodent's Revenge")
+    pygame.display.set_icon(_make_icon())
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 24, bold=True)
     small_font = pygame.font.SysFont("monospace", 20)
     sprites = _load_sprite_pack(TILE_SIZE)
+    title_font = pygame.font.SysFont("monospace", 40, bold=True)
+    snd: dict[str, pygame.mixer.Sound | None] = {}
+    try:
+        snd["move"]  = _gen_tone(880,  0.04, vol=0.12)
+        snd["trap"]  = _gen_tone(523,  0.12, vol=0.30)
+        snd["combo"] = _gen_tone(659,  0.18, vol=0.35)
+        snd["death"] = _gen_sweep(440, 110, 0.35, vol=0.30)
+        snd["clear"] = _gen_sweep(392, 784, 0.40, vol=0.30)
+        snd["cheese"]= _gen_tone(1046, 0.07, vol=0.20)
+    except Exception:
+        snd = {}
 
     colors = {
         "bg": (18, 16, 13),
@@ -366,12 +464,60 @@ def run_game() -> None:
         "levelup": (140, 220, 160),
     }
 
+    DIFFICULTIES = ["easy", "normal", "hard"]
+    DIFF_SETTINGS: dict[str, dict[str, int]] = {
+        "easy":   {"cat_delay_bonus":  3, "cat_count_offset": -1},
+        "normal": {"cat_delay_bonus":  0, "cat_count_offset":  0},
+        "hard":   {"cat_delay_bonus": -2, "cat_count_offset":  1},
+    }
+    diff_idx = 1  # default: normal
+    TWEEN_FRAMES = 6
+    block_tweens: list[dict] = []
+    mouse_facing = 1   # +1 = right (default), -1 = left
+    cat_alert: dict[tuple[int, int], int] = {}  # cat pos -> remaining flash frames
+    from rodents_revenge.scores import load_scores, save_score, is_high_score
     state = GameState()
     cat_frame_counter = 0
     animation_frame = 0
+    phase = "title"  # "title" | "playing"
+    score_saved = False
+    new_high_score = False
+    scores = load_scores()
     running = True
 
     def draw_board() -> None:
+        _tween_dests = {(tw["gx1"], tw["gy1"]) for tw in block_tweens}
+        # ------ line-of-sight alert: update cat_alert dict ------
+        mx, my = state.mouse_pos
+        alive_positions = set(state.cats)
+        # Remove stale keys (cats that moved/were trapped)
+        for key in list(cat_alert):
+            if key not in alive_positions:
+                del cat_alert[key]
+        for cat in state.cats:
+            cx, cy = cat
+            in_sight = False
+            if cx == mx:  # same column
+                y0, y1 = (min(cy, my) + 1, max(cy, my))
+                if all(
+                    state.board[yy][cx] not in (WALL, BLOCK)
+                    for yy in range(y0, y1)
+                ):
+                    in_sight = True
+            elif cy == my:  # same row
+                x0, x1 = (min(cx, mx) + 1, max(cx, mx))
+                if all(
+                    state.board[cy][xx] not in (WALL, BLOCK)
+                    for xx in range(x0, x1)
+                ):
+                    in_sight = True
+            if in_sight:
+                cat_alert[cat] = 20  # sustain glow for 20 frames
+            elif cat in cat_alert:
+                cat_alert[cat] -= 1
+                if cat_alert[cat] <= 0:
+                    del cat_alert[cat]
+        # ----------------------------------------------------------
         screen.fill(colors["bg"])
         for y in range(state.height):
             for x in range(state.width):
@@ -381,13 +527,20 @@ def run_game() -> None:
                 tile = state.board[y][x]
                 if tile == WALL:
                     _draw_wall_tile(screen, rect)
-                elif tile == BLOCK:
+                elif tile == BLOCK and (x, y) not in _tween_dests:
                     _draw_block_tile(screen, rect)
                 elif tile == CHEESE:
                     _draw_cheese_tile(screen, rect)
 
         for cx, cy in state.cats:
             rect = pygame.Rect(cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+            if (cx, cy) in cat_alert:
+                # draw orange glow ring behind sprite
+                glow_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+                alpha = min(180, 80 + cat_alert[(cx, cy)] * 5)
+                pygame.draw.ellipse(glow_surf, (255, 140, 0, alpha),
+                                    glow_surf.get_rect().inflate(-4, -4))
+                screen.blit(glow_surf, rect.topleft)
             if sprites.cat_frames:
                 frame = sprites.cat_frames[(animation_frame // 10) % len(sprites.cat_frames)]
                 screen.blit(
@@ -404,6 +557,8 @@ def run_game() -> None:
         mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
         if sprites.mouse_frames:
             frame = sprites.mouse_frames[(animation_frame // 8) % len(sprites.mouse_frames)]
+            if mouse_facing < 0:
+                frame = pygame.transform.flip(frame, True, False)
             screen.blit(
                 frame,
                 (
@@ -414,6 +569,12 @@ def run_game() -> None:
         else:
             pygame.draw.ellipse(screen, colors["mouse"], mouse_rect.inflate(-8, -8))
 
+        for tw in block_tweens:
+            t = tw["t"]
+            px = int(tw["gx0"] * TILE_SIZE + (tw["gx1"] - tw["gx0"]) * TILE_SIZE * t)
+            py = int(tw["gy0"] * TILE_SIZE + HUD_HEIGHT + (tw["gy1"] - tw["gy0"]) * TILE_SIZE * t)
+            _draw_block_tile(screen, pygame.Rect(px, py, TILE_SIZE, TILE_SIZE))
+
         hud_rect = pygame.Rect(0, 0, SCREEN_WIDTH, HUD_HEIGHT)
         pygame.draw.rect(screen, colors["hud"], hud_rect)
         hud_text = font.render(
@@ -422,6 +583,8 @@ def run_game() -> None:
             colors["text"],
         )
         screen.blit(hud_text, (16, 18))
+        pause_hint = small_font.render("P=pause", True, (110, 105, 85))
+        screen.blit(pause_hint, (SCREEN_WIDTH // 2 - pause_hint.get_width() // 2, 20))
 
         # Lives display — one pip per life
         for i in range(state.lives):
@@ -435,12 +598,26 @@ def run_game() -> None:
             screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, 22))
             state.win_level_flash -= 1
 
+        if state.trap_combo_flash > 0:
+            if state.last_trap_count >= 2:
+                total = state.last_trap_count * TRAP_SCORE + (state.last_trap_count - 1) * MULTI_TRAP_BONUS
+                combo_surf = small_font.render(
+                    f"{state.last_trap_count}x COMBO!  +{total}", True, (255, 210, 50)
+                )
+            else:
+                combo_surf = small_font.render(f"Trapped!  +{TRAP_SCORE}", True, colors["cheese"])
+            screen.blit(combo_surf, (SCREEN_WIDTH // 2 - combo_surf.get_width() // 2, 44))
+            state.trap_combo_flash -= 1
+
         if state.level_clear_delay > 0:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 80))
             screen.blit(overlay, (0, 0))
-            msg = font.render("Get ready...", True, colors["levelup"])
-            screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+            next_level = state.level + 1
+            lvl_surf = title_font.render(f"Level {next_level}", True, colors["levelup"])
+            msg = font.render("Get ready...", True, colors["text"])
+            screen.blit(lvl_surf, (SCREEN_WIDTH // 2 - lvl_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 48))
+            screen.blit(msg,      (SCREEN_WIDTH // 2 - msg.get_width()      // 2, SCREEN_HEIGHT // 2 + 4))
 
         if state.respawn_flash > 0 and (state.respawn_flash // 6) % 2 == 0:
             flash = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -452,9 +629,64 @@ def run_game() -> None:
             overlay.fill((0, 0, 0, 140))
             screen.blit(overlay, (0, 0))
             text1 = font.render("Game Over", True, colors["alert"])
-            text2 = small_font.render("Press R to restart, Esc to quit", True, colors["text"])
-            screen.blit(text1, (SCREEN_WIDTH // 2 - text1.get_width() // 2, SCREEN_HEIGHT // 2 - 30))
-            screen.blit(text2, (SCREEN_WIDTH // 2 - text2.get_width() // 2, SCREEN_HEIGHT // 2 + 8))
+            score_surf = font.render(
+                f"Score: {state.score:05d}   Level: {state.level}", True, colors["text"]
+            )
+            text2 = small_font.render(
+                "ENTER — menu    R — restart    Esc — quit", True, colors["text"]
+            )
+            y0 = SCREEN_HEIGHT // 2 - 55
+            screen.blit(text1, (SCREEN_WIDTH // 2 - text1.get_width() // 2, y0))
+            if new_high_score:
+                hs_surf = font.render("NEW HIGH SCORE!", True, (255, 220, 50))
+                screen.blit(hs_surf,   (SCREEN_WIDTH // 2 - hs_surf.get_width()   // 2, y0 + 38))
+                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 76))
+                screen.blit(text2,     (SCREEN_WIDTH // 2 - text2.get_width()     // 2, y0 + 114))
+            else:
+                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 38))
+                screen.blit(text2,     (SCREEN_WIDTH // 2 - text2.get_width()     // 2, y0 + 76))
+
+        if state.paused:
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 120))
+            screen.blit(overlay, (0, 0))
+            p1 = font.render("PAUSED", True, (220, 215, 180))
+            p2 = small_font.render("Press P to resume", True, (160, 155, 130))
+            screen.blit(p1, (SCREEN_WIDTH // 2 - p1.get_width() // 2, SCREEN_HEIGHT // 2 - 28))
+            screen.blit(p2, (SCREEN_WIDTH // 2 - p2.get_width() // 2, SCREEN_HEIGHT // 2 + 12))
+
+    def draw_title_screen() -> None:
+        screen.fill((10, 8, 6))
+        title_surf = title_font.render("RODENT'S REVENGE", True, (220, 200, 80))
+        screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, 55))
+        sub_surf = small_font.render("Python Clone", True, (140, 130, 90))
+        screen.blit(sub_surf, (SCREEN_WIDTH // 2 - sub_surf.get_width() // 2, 108))
+        if scores:
+            label = font.render("HIGH SCORES", True, colors["text"])
+            screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, 158))
+            for i, entry in enumerate(scores[:5]):
+                line = small_font.render(
+                    f"{i + 1}.  {entry['score']:05d}   LVL {entry['level']:02d}",
+                    True,
+                    (255, 220, 60) if i == 0 else (200, 190, 160),
+                )
+                screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 192 + i * 28))
+        # Difficulty selector
+        dlabel = small_font.render("DIFFICULTY  ← →", True, (160, 155, 130))
+        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 175))
+        diff_colors = {"easy": (120, 210, 140), "normal": (235, 226, 206), "hard": (255, 130, 130)}
+        x_offsets = [-220, 0, 220]
+        for i, d in enumerate(DIFFICULTIES):
+            col = diff_colors[d] if i == diff_idx else (90, 85, 70)
+            label_str = f"[ {d.upper()} ]" if i == diff_idx else f"  {d.upper()}  "
+            ds = small_font.render(label_str, True, col)
+            screen.blit(ds, (SCREEN_WIDTH // 2 + x_offsets[i] - ds.get_width() // 2, SCREEN_HEIGHT - 148))
+
+        if (animation_frame // 30) % 2 == 0:
+            enter_surf = font.render("PRESS ENTER TO PLAY", True, colors["levelup"])
+            screen.blit(enter_surf, (SCREEN_WIDTH // 2 - enter_surf.get_width() // 2, SCREEN_HEIGHT - 100))
+        esc_surf = small_font.render("ESC to quit", True, (100, 95, 75))
+        screen.blit(esc_surf, (SCREEN_WIDTH // 2 - esc_surf.get_width() // 2, SCREEN_HEIGHT - 58))
 
     while running:
         animation_frame += 1
@@ -465,34 +697,90 @@ def run_game() -> None:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                elif state.game_over and event.key == pygame.K_r:
-                    state.restart_game()
-                elif not state.game_over:
-                    if event.key in (pygame.K_LEFT, pygame.K_a):
-                        player_moved = state.handle_player_move(-1, 0)
+                elif phase == "title":
+                    if event.key == pygame.K_RETURN:
+                        s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+                        state = GameState(
+                            cat_delay_bonus=s["cat_delay_bonus"],
+                            cat_count_offset=s["cat_count_offset"],
+                        )
+                        cat_frame_counter = 0
+                        block_tweens.clear()
+                        score_saved = False
+                        new_high_score = False
+                        phase = "playing"
+                    elif event.key in (pygame.K_LEFT, pygame.K_a):
+                        diff_idx = (diff_idx - 1) % len(DIFFICULTIES)
                     elif event.key in (pygame.K_RIGHT, pygame.K_d):
-                        player_moved = state.handle_player_move(1, 0)
-                    elif event.key in (pygame.K_UP, pygame.K_w):
-                        player_moved = state.handle_player_move(0, -1)
-                    elif event.key in (pygame.K_DOWN, pygame.K_s):
-                        player_moved = state.handle_player_move(0, 1)
+                        diff_idx = (diff_idx + 1) % len(DIFFICULTIES)
+                elif phase == "playing":
+                    if state.game_over:
+                        if event.key == pygame.K_RETURN:
+                            phase = "title"
+                            scores = load_scores()
+                        elif event.key == pygame.K_r:
+                            state.restart_game()
+                            block_tweens.clear()
+                            score_saved = False
+                            new_high_score = False
+                    elif event.key == pygame.K_p:
+                        state.paused = not state.paused
+                    elif not state.paused:
+                        if event.key in (pygame.K_LEFT, pygame.K_a):
+                            player_moved = state.handle_player_move(-1, 0)
+                            if player_moved:
+                                mouse_facing = -1
+                        elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                            player_moved = state.handle_player_move(1, 0)
+                            if player_moved:
+                                mouse_facing = 1
+                        elif event.key in (pygame.K_UP, pygame.K_w):
+                            player_moved = state.handle_player_move(0, -1)
+                        elif event.key in (pygame.K_DOWN, pygame.K_s):
+                            player_moved = state.handle_player_move(0, 1)
 
-        if player_moved and not state.game_over:
-            cat_frame_counter += 1
-            cat_delay = max(2, CAT_MOVE_DELAY_FRAMES - (state.level - 1))
-            if cat_frame_counter >= cat_delay:
-                cat_frame_counter = 0
-                state.step_cats()
+        if phase == "playing" and not state.paused:
+            if player_moved and not state.game_over:
+                cat_frame_counter += 1
+                cat_delay = max(2, CAT_MOVE_DELAY_FRAMES - (state.level - 1) + state.cat_delay_bonus)
+                if cat_frame_counter >= cat_delay:
+                    cat_frame_counter = 0
+                    state.step_cats()
 
-        if state.level_clear_delay > 0 and not state.game_over:
-            state.level_clear_delay -= 1
-            if state.level_clear_delay == 0:
-                state.reset_level(state.level + 1)
+            if state.level_clear_delay > 0 and not state.game_over:
+                state.level_clear_delay -= 1
+                if state.level_clear_delay == 0:
+                    state.reset_level(state.level + 1)
+                    block_tweens.clear()
 
-        if state.respawn_flash > 0:
-            state.respawn_flash -= 1
+            if state.respawn_flash > 0:
+                state.respawn_flash -= 1
 
-        draw_board()
+            if state.game_over and not score_saved:
+                new_high_score = is_high_score(state.score)
+                save_score(state.score, state.level)
+                score_saved = True
+                scores = load_scores()
+
+            if state.last_block_push is not None:
+                fx, fy, tx, ty = state.last_block_push
+                block_tweens.append({"gx0": fx, "gy0": fy, "gx1": tx, "gy1": ty, "t": 0.0})
+                state.last_block_push = None
+            for tw in block_tweens:
+                tw["t"] = min(1.0, tw["t"] + 1.0 / TWEEN_FRAMES)
+            block_tweens[:] = [tw for tw in block_tweens if tw["t"] < 1.0]
+
+            for snd_name in state.pending_sounds:
+                s = snd.get(snd_name)
+                if s:
+                    s.play()
+            state.pending_sounds.clear()
+
+        if phase == "playing":
+            draw_board()
+        else:
+            draw_title_screen()
+
         pygame.display.flip()
         clock.tick(FPS)
 
