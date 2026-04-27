@@ -33,11 +33,16 @@ CAT_MOVE_DELAY_FRAMES = 8
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 54          # outer ring radius in pixels
-VJOY_THUMB_R = 22         # movable thumb circle radius
-VJOY_DEADZONE = 15        # pixels inside which input is ignored
-VJOY_INITIAL_DELAY = 12   # frames before auto-repeat kicks in
-VJOY_REPEAT_EVERY = 6     # frames between repeated moves while held
+VJOY_RADIUS = 72          # outer ring radius in pixels
+VJOY_THUMB_R = 28         # movable thumb circle radius
+VJOY_DEADZONE = 18        # pixels inside which input is ignored
+VJOY_INITIAL_DELAY = 10   # frames before auto-repeat kicks in
+VJOY_REPEAT_EVERY = 5     # frames between repeated moves while held
+VJOY_FLOAT = True         # joystick floats to first-touch position
+
+# Touch button layout (bottom-right HUD strip)
+TBTN_W = 90   # touch button width
+TBTN_H = 50   # touch button height
 
 LEVEL_PRESETS: dict[int, list[str]] = {
     1: [
@@ -468,16 +473,30 @@ class GameState:
             self.pending_sounds.append("clear")
 
     def is_cat_trapped(self, x: int, y: int) -> bool:
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        dirs8 = (
+            (1, 0), (-1, 0), (0, 1), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+        )
+        for dx, dy in dirs8:
             nx, ny = x + dx, y + dy
             if not self.in_bounds(nx, ny):
+                continue
+            # Mirror the corner-cutting rule used by the cat AI:
+            # a diagonal step is only valid when both adjacent orthogonal cells
+            # are free (not WALL or BLOCK).
+            if dx != 0 and dy != 0:
+                if self.board[y][nx] in (BLOCK, WALL):
+                    continue
+                if self.board[ny][x] in (BLOCK, WALL):
+                    continue
+            if self.board[ny][nx] in (BLOCK, WALL):
                 continue
             if (nx, ny) == self.mouse_pos:
                 return False
             if self._cat_at(nx, ny):
                 return False
-            if self.board[ny][nx] in (EMPTY, CHEESE):
-                return False
+            # Cell is genuinely reachable and open → not trapped
+            return False
         return True
 
     def _lose_life(self) -> None:
@@ -751,14 +770,24 @@ def run_game() -> None:
     running = True
 
     # --- Virtual joystick touch state ---
-    # Center anchored to bottom-left of the game screen
-    vjoy_cx = VJOY_RADIUS + 30
-    vjoy_cy = SCREEN_HEIGHT - VJOY_RADIUS - 30
+    # Floats to wherever the player first touches (left half of screen)
+    _vjoy_default_cx = VJOY_RADIUS + 30
+    _vjoy_default_cy = SCREEN_HEIGHT - VJOY_RADIUS - 30
+    vjoy_cx = _vjoy_default_cx
+    vjoy_cy = _vjoy_default_cy
     vjoy_active = False
     vjoy_finger_id: int | None = None
     vjoy_offset = (0.0, 0.0)   # thumb displacement from center
     vjoy_last_dir = (0, 0)
     vjoy_held_frames = 0
+
+    # Touch buttons (Pause, Help) rendered in HUD — rects set in draw_board
+    _tbtn_pause_rect = pygame.Rect(0, 0, TBTN_W, TBTN_H)
+    _tbtn_help_rect  = pygame.Rect(0, 0, TBTN_W, TBTN_H)
+    # Overlay action buttons (Menu / Restart on game-over, Resume on pause)
+    _tbtn_menu_rect    = pygame.Rect(0, 0, 160, 64)
+    _tbtn_restart_rect = pygame.Rect(0, 0, 160, 64)
+    _tbtn_resume_rect  = pygame.Rect(0, 0, 200, 64)
 
     def _vjoy_dir(offset: tuple[float, float]) -> tuple[int, int]:
         """Map joystick displacement to the nearest 4-way grid direction."""
@@ -778,6 +807,21 @@ def run_game() -> None:
         if moved and d[0] != 0:
             mouse_facing = d[0]
         return moved
+
+    def _draw_touch_btn(
+        surf: pygame.Surface,
+        rect: pygame.Rect,
+        label: str,
+        color: tuple[int, int, int] = (70, 65, 50),
+        text_color: tuple[int, int, int] = (220, 210, 170),
+        active: bool = False,
+    ) -> None:
+        """Draw a rounded touch-friendly button."""
+        bg_col = (100, 92, 68) if active else color
+        pygame.draw.rect(surf, bg_col, rect, border_radius=10)
+        pygame.draw.rect(surf, (140, 130, 95), rect, 2, border_radius=10)
+        lbl = small_font.render(label, True, text_color)
+        surf.blit(lbl, (rect.centerx - lbl.get_width() // 2, rect.centery - lbl.get_height() // 2))
 
     def draw_board() -> None:
         _tween_dests = {(tw["gx1"], tw["gy1"]) for tw in block_tweens}
@@ -895,8 +939,11 @@ def run_game() -> None:
             colors["text"],
         )
         screen.blit(hud_text, (16, 18))
-        pause_hint = small_font.render("P=pause", True, (110, 105, 85))
-        screen.blit(pause_hint, (SCREEN_WIDTH // 2 - pause_hint.get_width() // 2, 20))
+        # HUD touch buttons — Pause and Help, right side
+        _tbtn_pause_rect.topleft = (SCREEN_WIDTH - TBTN_W * 2 - 12, HUD_HEIGHT // 2 - TBTN_H // 2)
+        _tbtn_help_rect.topleft  = (SCREEN_WIDTH - TBTN_W - 6,      HUD_HEIGHT // 2 - TBTN_H // 2)
+        _draw_touch_btn(screen, _tbtn_pause_rect, "⏸ PAUSE", active=state.paused)
+        _draw_touch_btn(screen, _tbtn_help_rect,  "? HELP",  active=show_help)
 
         # Lives display — one pip per life
         for i in range(state.lives):
@@ -944,28 +991,33 @@ def run_game() -> None:
             score_surf = font.render(
                 f"Score: {state.score:05d}   Level: {state.level}", True, colors["text"]
             )
-            text2 = small_font.render(
-                "ENTER — menu    R — restart    Esc — quit", True, colors["text"]
-            )
-            y0 = SCREEN_HEIGHT // 2 - 55
+            y0 = SCREEN_HEIGHT // 2 - 80
             screen.blit(text1, (SCREEN_WIDTH // 2 - text1.get_width() // 2, y0))
             if new_high_score:
                 hs_surf = font.render("NEW HIGH SCORE!", True, (255, 220, 50))
-                screen.blit(hs_surf,   (SCREEN_WIDTH // 2 - hs_surf.get_width()   // 2, y0 + 38))
-                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 76))
-                screen.blit(text2,     (SCREEN_WIDTH // 2 - text2.get_width()     // 2, y0 + 114))
+                screen.blit(hs_surf,   (SCREEN_WIDTH // 2 - hs_surf.get_width()   // 2, y0 + 40))
+                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 82))
             else:
-                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 38))
-                screen.blit(text2,     (SCREEN_WIDTH // 2 - text2.get_width()     // 2, y0 + 76))
+                screen.blit(score_surf,(SCREEN_WIDTH // 2 - score_surf.get_width() // 2, y0 + 40))
+            # Large touch buttons
+            btn_y = SCREEN_HEIGHT // 2 + 20
+            _tbtn_menu_rect.center    = (SCREEN_WIDTH // 2 - 100, btn_y)
+            _tbtn_restart_rect.center = (SCREEN_WIDTH // 2 + 100, btn_y)
+            _draw_touch_btn(screen, _tbtn_menu_rect,    "⬅ MENU",    (55, 50, 38), (200, 190, 150))
+            _draw_touch_btn(screen, _tbtn_restart_rect, "↺ RESTART", (55, 50, 38), (200, 190, 150))
+            hint = tiny_font.render("or ENTER = menu  •  R = restart", True, (100, 95, 75))
+            screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, btn_y + 48))
 
         if state.paused:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 120))
             screen.blit(overlay, (0, 0))
             p1 = font.render("PAUSED", True, (220, 215, 180))
-            p2 = small_font.render("Press P to resume", True, (160, 155, 130))
-            screen.blit(p1, (SCREEN_WIDTH // 2 - p1.get_width() // 2, SCREEN_HEIGHT // 2 - 28))
-            screen.blit(p2, (SCREEN_WIDTH // 2 - p2.get_width() // 2, SCREEN_HEIGHT // 2 + 12))
+            screen.blit(p1, (SCREEN_WIDTH // 2 - p1.get_width() // 2, SCREEN_HEIGHT // 2 - 60))
+            _tbtn_resume_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10)
+            _draw_touch_btn(screen, _tbtn_resume_rect, "▶ RESUME", (60, 110, 70), (210, 240, 200))
+            hint2 = tiny_font.render("or tap ⏸ PAUSE again", True, (120, 115, 90))
+            screen.blit(hint2, (SCREEN_WIDTH // 2 - hint2.get_width() // 2, SCREEN_HEIGHT // 2 + 52))
 
     def draw_help_overlay() -> None:
         panel_w, panel_h = 560, 380
@@ -1008,37 +1060,43 @@ def run_game() -> None:
         screen.blit(close, (SCREEN_WIDTH // 2 - close.get_width() // 2, panel_y + panel_h - 28))
 
     def draw_virtual_joystick() -> None:
-        """Render the on-screen thumbstick (touch input)."""
-        sz = (VJOY_RADIUS + 4) * 2
+        """Render the floating on-screen thumbstick (touch input)."""
+        sz = (VJOY_RADIUS + 8) * 2
         joy_surf = pygame.Surface((sz, sz), pygame.SRCALPHA)
         sc = sz // 2  # centre within the surface
 
-        # Outer ring
-        pygame.draw.circle(joy_surf, (255, 255, 255, 30), (sc, sc), VJOY_RADIUS)
-        pygame.draw.circle(joy_surf, (255, 255, 255, 90), (sc, sc), VJOY_RADIUS, 2)
+        # Outer filled ring (more visible on iPad)
+        pygame.draw.circle(joy_surf, (255, 255, 255, 22), (sc, sc), VJOY_RADIUS)
+        pygame.draw.circle(joy_surf, (255, 255, 255, 110), (sc, sc), VJOY_RADIUS, 3)
 
-        # Cardinal direction pips
-        pip_r = VJOY_RADIUS - 14
-        for pdx, pdy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            px = sc + pdx * pip_r
-            py = sc + pdy * pip_r
-            pygame.draw.circle(joy_surf, (255, 255, 255, 110), (px, py), 5)
+        # Cardinal direction arrows
+        pip_r = VJOY_RADIUS - 16
+        arrow_pts = {
+            (1,  0): [(sc + pip_r - 6, sc - 6), (sc + pip_r + 6, sc), (sc + pip_r - 6, sc + 6)],
+            (-1, 0): [(sc - pip_r + 6, sc - 6), (sc - pip_r - 6, sc), (sc - pip_r + 6, sc + 6)],
+            (0,  1): [(sc - 6, sc + pip_r - 6), (sc, sc + pip_r + 6), (sc + 6, sc + pip_r - 6)],
+            (0, -1): [(sc - 6, sc - pip_r + 6), (sc, sc - pip_r - 6), (sc + 6, sc - pip_r + 6)],
+        }
+        cur_dir = _vjoy_dir(vjoy_offset) if vjoy_active else (0, 0)
+        for d, pts in arrow_pts.items():
+            alpha = 230 if d == cur_dir else 110
+            pygame.draw.polygon(joy_surf, (255, 255, 255, alpha), pts)
 
-        # Thumb circle — clamp to ring when active
+        # Thumb circle — clamped to ring travel area when active
         if vjoy_active:
             ox, oy = vjoy_offset
             dist = math.hypot(ox, oy)
-            max_dist = VJOY_RADIUS - VJOY_THUMB_R
+            max_dist = VJOY_RADIUS - VJOY_THUMB_R - 4
             if dist > max_dist and dist > 0:
                 ox = ox * max_dist / dist
                 oy = oy * max_dist / dist
             tx, ty = sc + int(ox), sc + int(oy)
-            pygame.draw.circle(joy_surf, (255, 255, 255, 170), (tx, ty), VJOY_THUMB_R)
-            pygame.draw.circle(joy_surf, (255, 255, 255, 230), (tx, ty), VJOY_THUMB_R, 2)
+            pygame.draw.circle(joy_surf, (255, 255, 255, 190), (tx, ty), VJOY_THUMB_R)
+            pygame.draw.circle(joy_surf, (255, 255, 255, 255), (tx, ty), VJOY_THUMB_R, 3)
         else:
-            # Resting position
-            pygame.draw.circle(joy_surf, (255, 255, 255, 85), (sc, sc), VJOY_THUMB_R)
-            pygame.draw.circle(joy_surf, (255, 255, 255, 140), (sc, sc), VJOY_THUMB_R, 2)
+            # Resting — semi-transparent centre knob
+            pygame.draw.circle(joy_surf, (255, 255, 255, 70),  (sc, sc), VJOY_THUMB_R)
+            pygame.draw.circle(joy_surf, (255, 255, 255, 130), (sc, sc), VJOY_THUMB_R, 2)
 
         screen.blit(joy_surf, (vjoy_cx - sc, vjoy_cy - sc))
 
@@ -1058,26 +1116,41 @@ def run_game() -> None:
                     (255, 220, 60) if i == 0 else (200, 190, 160),
                 )
                 screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 192 + i * 28))
-        # Difficulty selector
-        dlabel = small_font.render("DIFFICULTY  ← →", True, (160, 155, 130))
-        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 175))
-        diff_colors = {"easy": (120, 210, 140), "normal": (235, 226, 206), "hard": (255, 130, 130)}
-        x_offsets = [-220, 0, 220]
+        # Difficulty selector — large touch-friendly buttons
+        dlabel = small_font.render("DIFFICULTY", True, (160, 155, 130))
+        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 195))
+        diff_colors = {"easy": (50, 120, 60), "normal": (60, 60, 100), "hard": (120, 40, 40)}
+        diff_text_colors = {"easy": (140, 240, 160), "normal": (220, 216, 255), "hard": (255, 150, 140)}
+        diff_rects: list[pygame.Rect] = []
+        btn_w, btn_h = 130, 52
+        x_offsets = [-160, 0, 160]
         for i, d in enumerate(DIFFICULTIES):
-            col = diff_colors[d] if i == diff_idx else (90, 85, 70)
-            label_str = f"[ {d.upper()} ]" if i == diff_idx else f"  {d.upper()}  "
-            ds = small_font.render(label_str, True, col)
-            screen.blit(ds, (SCREEN_WIDTH // 2 + x_offsets[i] - ds.get_width() // 2, SCREEN_HEIGHT - 148))
+            r = pygame.Rect(0, 0, btn_w, btn_h)
+            r.center = (SCREEN_WIDTH // 2 + x_offsets[i], SCREEN_HEIGHT - 158)
+            diff_rects.append(r)
+            active = (i == diff_idx)
+            base_col = diff_colors[d]
+            bright_col = tuple(min(255, c + 40) for c in base_col)
+            col = bright_col if active else base_col  # type: ignore[assignment]
+            pygame.draw.rect(screen, col, r, border_radius=10)
+            border_col = diff_text_colors[d] if active else (80, 75, 60)
+            pygame.draw.rect(screen, border_col, r, 2, border_radius=10)
+            lbl = small_font.render(d.upper(), True, diff_text_colors[d] if active else (110, 105, 80))
+            screen.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
 
-        if (animation_frame // 30) % 2 == 0:
-            enter_surf = font.render("PRESS ENTER TO PLAY", True, colors["levelup"])
-            screen.blit(enter_surf, (SCREEN_WIDTH // 2 - enter_surf.get_width() // 2, SCREEN_HEIGHT - 100))
-        legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (120, 115, 95))
-        legal2 = tiny_font.render("Unofficial fan remake using CC-BY licensed assets", True, (120, 115, 95))
-        screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 84))
-        screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 68))
-        esc_surf = small_font.render("ESC to quit", True, (100, 95, 75))
-        screen.blit(esc_surf, (SCREEN_WIDTH // 2 - esc_surf.get_width() // 2, SCREEN_HEIGHT - 58))
+        # Big PLAY button
+        play_rect = pygame.Rect(0, 0, 220, 64)
+        play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 96)
+        play_col = (60, 130, 70) if (animation_frame // 30) % 2 == 0 else (45, 105, 55)
+        pygame.draw.rect(screen, play_col, play_rect, border_radius=14)
+        pygame.draw.rect(screen, (130, 220, 140), play_rect, 3, border_radius=14)
+        play_lbl = font.render("▶  PLAY", True, (200, 255, 210))
+        screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2, play_rect.centery - play_lbl.get_height() // 2))
+
+        legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (100, 95, 75))
+        legal2 = tiny_font.render("Unofficial fan remake using CC-BY licensed assets", True, (100, 95, 75))
+        screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 44))
+        screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 28))
 
     while running:
         animation_frame += 1
@@ -1090,14 +1163,19 @@ def run_game() -> None:
                 sx = int(event.x * SCREEN_WIDTH)
                 sy = int(event.y * SCREEN_HEIGHT)
                 if phase == "title":
-                    # Tap difficulty arrows
-                    if sy > SCREEN_HEIGHT - 165 and sy < SCREEN_HEIGHT - 125:
-                        if sx < SCREEN_WIDTH // 3:
-                            diff_idx = (diff_idx - 1) % len(DIFFICULTIES)
-                        elif sx > SCREEN_WIDTH * 2 // 3:
-                            diff_idx = (diff_idx + 1) % len(DIFFICULTIES)
-                    # Tap anywhere in the lower third to start
-                    elif sy > SCREEN_HEIGHT - 120:
+                    # Difficulty buttons — three distinct rects in bottom strip
+                    btn_w2, btn_h2 = 130, 52
+                    x_offsets2 = [-160, 0, 160]
+                    for ti, _d in enumerate(DIFFICULTIES):
+                        r2 = pygame.Rect(0, 0, btn_w2, btn_h2)
+                        r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 158)
+                        if r2.collidepoint(sx, sy):
+                            diff_idx = ti
+                            break
+                    # PLAY button
+                    play_r = pygame.Rect(0, 0, 220, 64)
+                    play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 96)
+                    if play_r.collidepoint(sx, sy):
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
                         state = GameState(
                             cat_delay_bonus=s["cat_delay_bonus"],
@@ -1109,21 +1187,41 @@ def run_game() -> None:
                         new_high_score = False
                         phase = "playing"
                 elif phase == "playing":
-                    # Joystick zone
-                    ddx = sx - vjoy_cx
-                    ddy = sy - vjoy_cy
-                    if math.hypot(ddx, ddy) <= VJOY_RADIUS * 1.5 and not vjoy_active:
-                        vjoy_active = True
-                        vjoy_finger_id = event.finger_id
-                        vjoy_offset = (float(ddx), float(ddy))
-                        vjoy_last_dir = (0, 0)
-                        vjoy_held_frames = 0
-                        # Immediate first move
-                        d = _vjoy_dir(vjoy_offset)
-                        if d != (0, 0):
-                            vjoy_last_dir = d
-                            if _apply_vjoy_move(d):
-                                player_moved = True
+                    # HUD touch buttons
+                    if _tbtn_pause_rect.collidepoint(sx, sy):
+                        if not state.game_over:
+                            state.paused = not state.paused
+                    elif _tbtn_help_rect.collidepoint(sx, sy):
+                        if not state.game_over and not state.paused:
+                            show_help = not show_help
+                    # Game-over overlay buttons
+                    elif state.game_over:
+                        if _tbtn_menu_rect.collidepoint(sx, sy):
+                            phase = "title"
+                            scores = load_scores()
+                        elif _tbtn_restart_rect.collidepoint(sx, sy):
+                            state.restart_game()
+                            block_tweens.clear()
+                            score_saved = False
+                            new_high_score = False
+                    # Pause resume button
+                    elif state.paused:
+                        if _tbtn_resume_rect.collidepoint(sx, sy):
+                            state.paused = False
+                    # Help close — tap anywhere outside panel closes it
+                    elif show_help:
+                        show_help = False
+                    else:
+                        # Floating joystick — spawn at touch point (left 60% of screen)
+                        if sx < SCREEN_WIDTH * 3 // 5 and not vjoy_active:
+                            # Float to touch position, clamped away from edges
+                            vjoy_cx = max(VJOY_RADIUS + 10, min(sx, SCREEN_WIDTH * 3 // 5 - VJOY_RADIUS - 10))
+                            vjoy_cy = max(VJOY_RADIUS + HUD_HEIGHT + 10, min(sy, SCREEN_HEIGHT - VJOY_RADIUS - 10))
+                            vjoy_active = True
+                            vjoy_finger_id = event.finger_id
+                            vjoy_offset = (0.0, 0.0)
+                            vjoy_last_dir = (0, 0)
+                            vjoy_held_frames = 0
             elif event.type == pygame.FINGERMOTION:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
                     sx = int(event.x * SCREEN_WIDTH)
@@ -1136,6 +1234,9 @@ def run_game() -> None:
                     vjoy_offset = (0.0, 0.0)
                     vjoy_last_dir = (0, 0)
                     vjoy_held_frames = 0
+                    # Return joystick to default corner position
+                    vjoy_cx = _vjoy_default_cx
+                    vjoy_cy = _vjoy_default_cy
             # ---- keyboard events --------------------------------------------
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
