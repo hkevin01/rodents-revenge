@@ -77,6 +77,111 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "...#.......C...X..",
         "...###............",
     ],
+    4: [
+        "........####......",
+        "..BBB....##....C..",
+        "........###.......",
+        "..M...............",
+        ".....BBBB......X..",
+        "....#.............",
+        "..C.#...###.......",
+        "....#.....#.......",
+        "....###...#..X....",
+        "..........#.......",
+        "..BBB.....#....C..",
+        "..........###.....",
+        "...............X..",
+    ],
+    5: [
+        "..###.............",
+        "..#....BBB.....X..",
+        "..#....B.B........",
+        "..M....BBB....C...",
+        "..####........##..",
+        "......#..BBB..##..",
+        "..C...#...#.......",
+        "......#...#..X....",
+        "......#####.......",
+        "..........#....C..",
+        "..BBB.....#.......",
+        "...........###.X..",
+        "..................",
+    ],
+    6: [
+        "...####...........",
+        "...#..#.....C.....",
+        "...#..#..BBB......",
+        "..M#..####....X...",
+        "...#..............",
+        "...####..###......",
+        "......#..#.#...C..",
+        "..BBB.#..###......",
+        "......#............",
+        "..X...#####....X...",
+        "...........#.......",
+        "..C....BBB..#......",
+        "...........###.....",
+    ],
+    7: [
+        "..###.....###.....",
+        "..#.#..C..#.#..X..",
+        "..###.....###.....",
+        "......BBB.........",
+        "..M...............",
+        "....#######.......",
+        "....#.....#...C...",
+        "....#.BBB.#.......",
+        "....#.....#..X....",
+        "....#######.......",
+        ".......C........X.",
+        "..BBB.............",
+        "...............X..",
+    ],
+    8: [
+        "...#####..........",
+        "...#...#...C...X..",
+        "...#.B.#..........",
+        "..M#.B.####.......",
+        "...#.B....#.......",
+        "...#####..#..BBB..",
+        "........#.#.......",
+        "..C.....#.#..X....",
+        "........#.#.......",
+        "..BBB...###.......",
+        "............C...X.",
+        "..X....####.......",
+        ".......#..........",
+    ],
+    9: [
+        "..####........####",
+        "..#..#...C....#..#",
+        "..#..#######..#..#",
+        "..M......#....#..#",
+        "..###.BBB#....####",
+        "......#...#.......",
+        "..X...#...#...X...",
+        "......#...#..C....",
+        "..###.#####........",
+        "......#...#....X..",
+        "..BBB.#...#.......",
+        "......#...#..C....",
+        "..X...#####.......",
+    ],
+    10: [
+        "..#####.....#####.",
+        "..#...#..C..#...#.",
+        "..#.B.######.B.#X.",
+        "..#.B....#....B.#.",
+        "..#.B.M..#..BBB.#.",
+        "..#####..#..#####.",
+        "........##........",
+        "..X..C..##..X.....",
+        "........##........",
+        "..#####..#..#####.",
+        "..#...#..#..#...#.",
+        "..#.B.######.B.#X.",
+        "..#####.....#####.",
+    ],
 }
 
 
@@ -122,8 +227,14 @@ def _load_sprite_pack(tile_size: int) -> SpritePack:
     raw_dir = root / "assets" / "sprites" / "raw" / "cat_sprites"
 
     sprite_size = int(tile_size * 0.9)
-    mouse_frames = _load_strip_frames(raw_dir / "mouse" / "mouse_0_walk.png", sprite_size, max_frames=4)
-    cat_frames = _load_strip_frames(raw_dir / "cat_0" / "cat_0_walk.png", sprite_size, max_frames=8)
+    # Prefer the older-style strips for a closer retro look.
+    mouse_frames = _load_strip_frames(raw_dir / "rat" / "rat_0_walk.png", sprite_size, max_frames=4)
+    cat_frames = _load_strip_frames(raw_dir / "cat_1" / "cat_1_walk.png", sprite_size, max_frames=8)
+
+    if not mouse_frames:
+        mouse_frames = _load_strip_frames(raw_dir / "mouse" / "mouse_0_walk.png", sprite_size, max_frames=4)
+    if not cat_frames:
+        cat_frames = _load_strip_frames(raw_dir / "cat_0" / "cat_0_walk.png", sprite_size, max_frames=8)
 
     return SpritePack(mouse_frames=mouse_frames, cat_frames=cat_frames)
 
@@ -268,17 +379,27 @@ class GameState:
             return True
 
         if target == BLOCK:
-            bx, by = nx + dx, ny + dy
-            if not self.in_bounds(bx, by):
+            # Chain-push contiguous blocks if there is empty space at the end.
+            chain: list[tuple[int, int]] = []
+            cx, cy = nx, ny
+            while self.in_bounds(cx, cy) and self.board[cy][cx] == BLOCK:
+                chain.append((cx, cy))
+                cx += dx
+                cy += dy
+
+            if not self.in_bounds(cx, cy):
                 return False
-            if self.board[by][bx] != EMPTY or self._cat_at(bx, by) or (bx, by) == self.mouse_pos:
+            if self.board[cy][cx] != EMPTY or self._cat_at(cx, cy) or (cx, cy) == self.mouse_pos:
                 return False
-            self.board[by][bx] = BLOCK
-            self.board[ny][nx] = EMPTY
+
+            for bx, by in reversed(chain):
+                self.board[by + dy][bx + dx] = BLOCK
+                self.board[by][bx] = EMPTY
+
             self.mouse_pos = (nx, ny)
             self.score += MOUSE_STEP_SCORE
             self.pending_sounds.append("move")
-            self.last_block_push = (nx, ny, bx, by)
+            self.last_block_push = (nx, ny, nx + dx, ny + dy)
             return True
 
         return False
@@ -536,6 +657,7 @@ def run_game() -> None:
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 24, bold=True)
     small_font = pygame.font.SysFont("monospace", 20)
+    tiny_font = pygame.font.SysFont("monospace", 14)
     sprites = _load_sprite_pack(TILE_SIZE)
     title_font = pygame.font.SysFont("monospace", 40, bold=True)
     snd: dict[str, pygame.mixer.Sound | None] = {}
@@ -826,6 +948,10 @@ def run_game() -> None:
         if (animation_frame // 30) % 2 == 0:
             enter_surf = font.render("PRESS ENTER TO PLAY", True, colors["levelup"])
             screen.blit(enter_surf, (SCREEN_WIDTH // 2 - enter_surf.get_width() // 2, SCREEN_HEIGHT - 100))
+        legal1 = tiny_font.render("Inspired by Microsoft Rodent's Revenge (Windows 95)", True, (120, 115, 95))
+        legal2 = tiny_font.render("Unofficial fan remake using CC-BY licensed assets", True, (120, 115, 95))
+        screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 84))
+        screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 68))
         esc_surf = small_font.render("ESC to quit", True, (100, 95, 75))
         screen.blit(esc_surf, (SCREEN_WIDTH // 2 - esc_surf.get_width() // 2, SCREEN_HEIGHT - 58))
 

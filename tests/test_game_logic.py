@@ -215,6 +215,38 @@ def test_block_push_records_last_block_push() -> None:
     assert state.mouse_pos == (3, 2)
 
 
+def test_mouse_pushes_multiple_blocks_in_chain() -> None:
+    state = blank_state()
+    state.board[2][3] = BLOCK
+    state.board[2][4] = BLOCK
+    state.board[2][5] = BLOCK
+
+    moved = state.handle_player_move(1, 0)
+
+    assert moved is True
+    assert state.mouse_pos == (3, 2)
+    assert state.board[2][4] == BLOCK
+    assert state.board[2][5] == BLOCK
+    assert state.board[2][6] == BLOCK
+    assert state.board[2][3] == EMPTY
+
+
+def test_mouse_cannot_push_multiple_blocks_if_no_space() -> None:
+    state = blank_state()
+    state.board[2][3] = BLOCK
+    state.board[2][4] = BLOCK
+    state.board[2][5] = BLOCK
+    state.board[2][6] = WALL
+
+    moved = state.handle_player_move(1, 0)
+
+    assert moved is False
+    assert state.mouse_pos == (2, 2)
+    assert state.board[2][3] == BLOCK
+    assert state.board[2][4] == BLOCK
+    assert state.board[2][5] == BLOCK
+
+
 def test_difficulty_cat_count_offset() -> None:
     easy = GameState(cat_count_offset=-1)
     normal = GameState(cat_count_offset=0)
@@ -308,6 +340,28 @@ def test_level3_uses_preset_layout() -> None:
     assert state.board[2][3] == BLOCK
     assert state.board[2][11] == CHEESE
     assert len(state.cats) == 3
+
+
+def test_level4_uses_preset_layout() -> None:
+    state = GameState()
+    state.reset_level(4)
+
+    assert state.mouse_pos == (3, 4)
+    assert state.board[1][9] == WALL
+    assert state.board[2][3] == BLOCK
+    assert state.board[2][16] == CHEESE
+    assert len(state.cats) == 3
+
+
+def test_level10_uses_preset_layout() -> None:
+    state = GameState()
+    state.reset_level(10)
+
+    assert state.mouse_pos == (7, 5)
+    assert state.board[1][3] == WALL
+    assert state.board[3][5] == BLOCK
+    assert state.board[2][10] == CHEESE
+    assert len(state.cats) == 4
 
 
 # ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------
