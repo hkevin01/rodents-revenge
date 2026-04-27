@@ -270,3 +270,80 @@ def test_level_clear_delay_next_level_is_current_plus_one() -> None:
     # The overlay code reads: next_level = state.level + 1
     next_level = state.level + 1
     assert next_level == 4
+
+
+# ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------
+
+def test_cheese_scatter_on_level_start() -> None:
+    """reset_level should place bonus CHEESE tiles on the board."""
+    state = GameState(width=20, height=15)
+    # Count cheese tiles placed (level 1 → min(3+1, 15) = 4)
+    cheese_count = sum(
+        state.board[y][x] == CHEESE
+        for y in range(state.height)
+        for x in range(state.width)
+    )
+    assert cheese_count >= 3, f"Expected ≥3 cheese tiles at level start, got {cheese_count}"
+
+
+def test_cheese_scatter_increases_with_level() -> None:
+    """Higher levels place more cheese (up to 15 tiles)."""
+    low  = GameState(width=20, height=15)
+    low.reset_level(1)
+    high = GameState(width=20, height=15)
+    high.reset_level(8)
+
+    def _cheese(s: GameState) -> int:
+        return sum(s.board[y][x] == CHEESE for y in range(s.height) for x in range(s.width))
+
+    # Higher level places at least as many cheese as lower level (capped at 15)
+    assert _cheese(high) >= _cheese(low)
+
+
+def test_near_clear_warn_sound_fires_at_two_cats() -> None:
+    """'warn' sound appended to pending_sounds when cats drop to exactly 2."""
+    state = blank_state()
+    # Three cats; surround one so it gets trapped leaving 2 survivors
+    state.cats = [(3, 3), (5, 3), (5, 5)]
+    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+        state.board[by][bx] = BLOCK
+
+    state.step_cats()
+
+    assert "warn" in state.pending_sounds
+    assert state.near_clear_warned is True
+
+
+def test_near_clear_warn_fires_only_once_per_level() -> None:
+    """Repeated step_cats calls must not re-queue 'warn'."""
+    state = blank_state()
+    state.cats = [(3, 3), (5, 3), (5, 5)]
+    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+        state.board[by][bx] = BLOCK
+
+    state.step_cats()
+    state.pending_sounds.clear()  # consume queue
+    state.step_cats()             # second step — should NOT re-warn
+
+    assert "warn" not in state.pending_sounds
+
+
+def test_near_clear_warn_not_fired_when_already_warned() -> None:
+    """near_clear_warned flag prevents duplicate sounds mid-level."""
+    state = blank_state()
+    state.near_clear_warned = True
+    state.cats = [(3, 3), (5, 3)]
+    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+        state.board[by][bx] = BLOCK
+
+    state.step_cats()
+
+    assert "warn" not in state.pending_sounds
+
+
+def test_near_clear_warned_resets_on_new_level() -> None:
+    """reset_level clears near_clear_warned so next level can warn again."""
+    state = blank_state()
+    state.near_clear_warned = True
+    state.reset_level(2)
+    assert state.near_clear_warned is False

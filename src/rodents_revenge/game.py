@@ -97,6 +97,7 @@ class GameState:
     cat_delay_bonus: int = 0
     cat_count_offset: int = 0
     last_block_push: tuple[int, int, int, int] | None = None
+    near_clear_warned: bool = False
     pending_sounds: list[str] = field(default_factory=list)
     board: list[list[int]] = field(default_factory=list)
     mouse_pos: tuple[int, int] = (1, 1)
@@ -129,9 +130,11 @@ class GameState:
         block_count = min(18 + level * 6, 120)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
         self.last_block_push = None
+        self.near_clear_warned = False
 
         self._place_random_cells(WALL, wall_count)
         self._place_random_cells(BLOCK, block_count)
+        self._place_random_cells(CHEESE, min(3 + level, 15))
 
         self.mouse_pos = self._find_free_cell(prefer_corner=True)
         self.cats = []
@@ -221,6 +224,9 @@ class GameState:
             else:
                 survivors.append(cat)
         self.cats = survivors
+        if 0 < len(self.cats) <= 2 and not self.near_clear_warned:
+            self.near_clear_warned = True
+            self.pending_sounds.append("warn")
         if trap_count > 0:
             combo_bonus = (trap_count - 1) * MULTI_TRAP_BONUS
             self.score += trap_count * TRAP_SCORE + combo_bonus
@@ -447,6 +453,7 @@ def run_game() -> None:
         snd["death"] = _gen_sweep(440, 110, 0.35, vol=0.30)
         snd["clear"] = _gen_sweep(392, 784, 0.40, vol=0.30)
         snd["cheese"]= _gen_tone(1046, 0.07, vol=0.20)
+        snd["warn"]  = _gen_sweep(300,  900, 0.15, vol=0.28)
     except Exception:
         snd = {}
 
@@ -475,6 +482,7 @@ def run_game() -> None:
     block_tweens: list[dict] = []
     mouse_facing = 1   # +1 = right (default), -1 = left
     cat_alert: dict[tuple[int, int], int] = {}  # cat pos -> remaining flash frames
+    show_help = False
     from rodents_revenge.scores import load_scores, save_score, is_high_score
     state = GameState()
     cat_frame_counter = 0
@@ -655,6 +663,46 @@ def run_game() -> None:
             screen.blit(p1, (SCREEN_WIDTH // 2 - p1.get_width() // 2, SCREEN_HEIGHT // 2 - 28))
             screen.blit(p2, (SCREEN_WIDTH // 2 - p2.get_width() // 2, SCREEN_HEIGHT // 2 + 12))
 
+    def draw_help_overlay() -> None:
+        panel_w, panel_h = 560, 380
+        panel_x = SCREEN_WIDTH // 2 - panel_w // 2
+        panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
+        bg = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        bg.fill((12, 10, 8, 210))
+        screen.blit(bg, (panel_x, panel_y))
+        pygame.draw.rect(screen, (100, 90, 70), (panel_x, panel_y, panel_w, panel_h), 2)
+
+        heading = font.render("CONTROLS", True, (220, 200, 80))
+        screen.blit(heading, (SCREEN_WIDTH // 2 - heading.get_width() // 2, panel_y + 16))
+
+        bindings = [
+            ("Arrows / WASD",  "Move the mouse"),
+            ("P",              "Pause / resume"),
+            ("H",              "Show / hide this help"),
+            ("R",              "Restart  (game-over screen)"),
+            ("Enter",          "Confirm / back to menu"),
+            ("Esc",            "Quit"),
+            ("", ""),
+            ("Push blocks",    "Trap cats by surrounding them"),
+            ("Multi-trap",     f"+{MULTI_TRAP_BONUS} combo bonus per extra cat"),
+            ("Cheese tile",    f"+{CHEESE_SCORE} pts each"),
+        ]
+        key_x  = panel_x + 30
+        desc_x = panel_x + 230
+        row_y  = panel_y + 58
+        for key, desc in bindings:
+            if not key:
+                row_y += 8
+                continue
+            k_surf = small_font.render(key,  True, (255, 215, 60))
+            d_surf = small_font.render(desc, True, colors["text"])
+            screen.blit(k_surf, (key_x,  row_y))
+            screen.blit(d_surf, (desc_x, row_y))
+            row_y += 26
+
+        close = small_font.render("Press H to close", True, (110, 105, 80))
+        screen.blit(close, (SCREEN_WIDTH // 2 - close.get_width() // 2, panel_y + panel_h - 28))
+
     def draw_title_screen() -> None:
         screen.fill((10, 8, 6))
         title_surf = title_font.render("RODENT'S REVENGE", True, (220, 200, 80))
@@ -725,7 +773,9 @@ def run_game() -> None:
                             new_high_score = False
                     elif event.key == pygame.K_p:
                         state.paused = not state.paused
-                    elif not state.paused:
+                    elif event.key == pygame.K_h:
+                        show_help = not show_help
+                    elif not state.paused and not show_help:
                         if event.key in (pygame.K_LEFT, pygame.K_a):
                             player_moved = state.handle_player_move(-1, 0)
                             if player_moved:
@@ -739,7 +789,7 @@ def run_game() -> None:
                         elif event.key in (pygame.K_DOWN, pygame.K_s):
                             player_moved = state.handle_player_move(0, 1)
 
-        if phase == "playing" and not state.paused:
+        if phase == "playing" and not state.paused and not show_help:
             if player_moved and not state.game_over:
                 cat_frame_counter += 1
                 cat_delay = max(2, CAT_MOVE_DELAY_FRAMES - (state.level - 1) + state.cat_delay_bonus)
@@ -778,6 +828,8 @@ def run_game() -> None:
 
         if phase == "playing":
             draw_board()
+            if show_help:
+                draw_help_overlay()
         else:
             draw_title_screen()
 
