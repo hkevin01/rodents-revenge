@@ -216,13 +216,14 @@ def test_block_push_records_last_block_push() -> None:
 
 
 def test_difficulty_cat_count_offset() -> None:
-    # Easy: -1 offset, level 1 → max(1, 2 + 1 - 1) = 2
     easy = GameState(cat_count_offset=-1)
-    assert len(easy.cats) == 2
-
-    # Hard: +1 offset, level 1 → max(1, 2 + 1 + 1) = 4
+    normal = GameState(cat_count_offset=0)
     hard = GameState(cat_count_offset=1)
-    assert len(hard.cats) == 4
+
+    # Preset level 1 scales cat pressure by difficulty.
+    assert len(easy.cats) <= len(normal.cats) <= len(hard.cats)
+    assert len(easy.cats) >= 1
+    assert len(normal.cats) == 1
 
 
 def test_difficulty_cat_delay_bonus_stored() -> None:
@@ -270,6 +271,43 @@ def test_level_clear_delay_next_level_is_current_plus_one() -> None:
     # The overlay code reads: next_level = state.level + 1
     next_level = state.level + 1
     assert next_level == 4
+
+
+def test_level1_uses_preset_layout() -> None:
+    state = GameState()
+
+    # Mouse and key tiles come from handcrafted preset map.
+    assert state.mouse_pos == (3, 4)
+    assert state.board[2][3] == BLOCK
+    assert state.board[3][7] == WALL
+    assert state.board[3][15] == CHEESE
+
+
+def test_level1_preset_default_cat_count() -> None:
+    state = GameState(cat_count_offset=0)
+    assert len(state.cats) == 1
+
+
+def test_level2_uses_preset_layout() -> None:
+    state = GameState()
+    state.reset_level(2)
+
+    assert state.mouse_pos == (3, 4)
+    assert state.board[1][6] == WALL
+    assert state.board[2][3] == BLOCK
+    assert state.board[2][13] == CHEESE
+    assert len(state.cats) == 2
+
+
+def test_level3_uses_preset_layout() -> None:
+    state = GameState()
+    state.reset_level(3)
+
+    assert state.mouse_pos == (3, 4)
+    assert state.board[1][5] == WALL
+    assert state.board[2][3] == BLOCK
+    assert state.board[2][11] == CHEESE
+    assert len(state.cats) == 3
 
 
 # ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------

@@ -31,6 +31,54 @@ MULTI_TRAP_BONUS = 150
 
 CAT_MOVE_DELAY_FRAMES = 8
 
+LEVEL_PRESETS: dict[int, list[str]] = {
+    1: [
+        "..................",
+        "..BBB.............",
+        "......##......C...",
+        "..M...##..........",
+        "......##....BBB...",
+        "..................",
+        "....C......#......",
+        "..........###.....",
+        "...........#......",
+        "....BBB...........",
+        "..............X...",
+        "..C...............",
+        "..................",
+    ],
+    2: [
+        ".....##...........",
+        "..BBB##.....C.....",
+        ".....##.....###...",
+        "..M.........#.....",
+        "....BBBB....#..X..",
+        ".................C",
+        "..###.............",
+        "...#......BBB.....",
+        "...#..............",
+        "...#....C.....X...",
+        "..................",
+        "..BBB......##.....",
+        "...........##.....",
+    ],
+    3: [
+        "....###...........",
+        "..B..#....C..BBB..",
+        "..B..#........#...",
+        "..M..####.....#...",
+        ".....#........#X..",
+        "..C..#..BBB...#...",
+        ".....#........#...",
+        ".....####..####...",
+        "..X......C........",
+        ".............BBB..",
+        "...###............",
+        "...#.......C...X..",
+        "...###............",
+    ],
+}
+
 
 @dataclass
 class SpritePack:
@@ -126,6 +174,9 @@ class GameState:
             self.board[y][0] = WALL
             self.board[y][self.width - 1] = WALL
 
+        if self._apply_preset_level(level):
+            return
+
         wall_count = min(8 + level * 2, 40)
         block_count = min(18 + level * 6, 120)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
@@ -140,6 +191,45 @@ class GameState:
         self.cats = []
         for _ in range(cat_count):
             self.cats.append(self._find_free_cell(min_distance_from=self.mouse_pos, min_distance=5))
+
+    def _apply_preset_level(self, level: int) -> bool:
+        """Use handcrafted early layouts to emulate classic map pacing."""
+        if level not in LEVEL_PRESETS or self.width != GRID_WIDTH or self.height != GRID_HEIGHT:
+            return False
+
+        layout = LEVEL_PRESETS[level]
+
+        mouse_spawn: tuple[int, int] | None = None
+        cat_spawns: list[tuple[int, int]] = []
+
+        # Draw into interior cells (1..width-2, 1..height-2).
+        for iy in range(self.height - 2):
+            row = layout[iy] if iy < len(layout) else ""
+            for ix in range(self.width - 2):
+                ch = row[ix] if ix < len(row) else "."
+                x, y = ix + 1, iy + 1
+                if ch == "#":
+                    self.board[y][x] = WALL
+                elif ch == "B":
+                    self.board[y][x] = BLOCK
+                elif ch == "C":
+                    self.board[y][x] = CHEESE
+                elif ch == "M":
+                    mouse_spawn = (x, y)
+                elif ch == "X":
+                    cat_spawns.append((x, y))
+
+        self.last_block_push = None
+        self.near_clear_warned = False
+        self.mouse_pos = mouse_spawn if mouse_spawn else self._find_free_cell(prefer_corner=True)
+
+        base_cat_count = max(1, len(cat_spawns))
+        target_cat_count = max(1, base_cat_count + self.cat_count_offset)
+        self.cats = cat_spawns[:target_cat_count]
+        while len(self.cats) < target_cat_count:
+            self.cats.append(self._find_free_cell(min_distance_from=self.mouse_pos, min_distance=5))
+
+        return True
 
     def restart_game(self) -> None:
         self.score = 0
@@ -435,7 +525,10 @@ def _make_icon() -> pygame.Surface:
 
 
 def run_game() -> None:
-    pygame.mixer.pre_init(22050, -16, 1, 512)
+    try:
+        pygame.mixer.pre_init(22050, -16, 1, 512)
+    except Exception:
+        pass
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Rodent's Revenge")
