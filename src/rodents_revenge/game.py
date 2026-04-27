@@ -289,7 +289,7 @@ class GameState:
             return
 
         wall_count = min(8 + level * 2, 40)
-        block_count = min(18 + level * 6, 120)
+        block_count = min(24 + level * 8, 150)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
         self.last_block_push = None
         self.near_clear_warned = False
@@ -332,6 +332,13 @@ class GameState:
 
         self.last_block_push = None
         self.near_clear_warned = False
+
+        forbidden: set[tuple[int, int]] = set(cat_spawns)
+        if mouse_spawn is not None:
+            forbidden.add(mouse_spawn)
+        extra_blocks = min(4 + level * 2, 24)
+        self._place_random_cells(BLOCK, extra_blocks, forbidden=forbidden)
+
         self.mouse_pos = mouse_spawn if mouse_spawn else self._find_free_cell(prefer_corner=True)
 
         base_cat_count = max(1, len(cat_spawns))
@@ -473,12 +480,48 @@ class GameState:
             self.mouse_pos = self._find_free_cell(prefer_corner=True)
 
     def _next_cat_position(self, cat: tuple[int, int], occupied: set[tuple[int, int]]) -> tuple[int, int]:
-        """BFS to find the shortest path toward the mouse, avoiding walls/blocks/other cats."""
+        """Aggressive cat movement: diagonal-capable beeline first, then 8-way BFS fallback."""
         start = cat
         goal = self.mouse_pos
+        sx, sy = start
 
-        # BFS
+        dirs8 = [
+            (1, 0), (-1, 0), (0, 1), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+        ]
+
+        def can_step(cx: int, cy: int, nx: int, ny: int) -> bool:
+            if not self.in_bounds(nx, ny):
+                return False
+            if self.board[ny][nx] in (BLOCK, WALL):
+                return False
+            # No corner-cutting: diagonal movement requires both edge-adjacent cells open.
+            if nx != cx and ny != cy:
+                if self.board[cy][nx] in (BLOCK, WALL):
+                    return False
+                if self.board[ny][cx] in (BLOCK, WALL):
+                    return False
+            if (nx, ny) in occupied and (nx, ny) != goal:
+                return False
+            return True
+
+        # Beeline preference: pick adjacent move that minimizes distance to mouse.
+        beeline = sorted(
+            dirs8,
+            key=lambda d: (
+                max(abs(goal[0] - (sx + d[0])), abs(goal[1] - (sy + d[1]))),
+                abs(goal[0] - (sx + d[0])) + abs(goal[1] - (sy + d[1])),
+                0 if d[0] and d[1] else 1,  # prefer diagonal tie-breaks
+            ),
+        )
+        for dx, dy in beeline:
+            nx, ny = sx + dx, sy + dy
+            if can_step(sx, sy, nx, ny):
+                return nx, ny
+
+        # Fallback BFS when immediate beeline is blocked.
         from collections import deque
+
         queue: deque[tuple[int, int]] = deque([start])
         came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
 
@@ -487,37 +530,18 @@ class GameState:
             if current == goal:
                 break
             cx, cy = current
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for dx, dy in dirs8:
                 nx, ny = cx + dx, cy + dy
-                if not self.in_bounds(nx, ny):
-                    continue
                 if (nx, ny) in came_from:
                     continue
-                if self.board[ny][nx] in (BLOCK, WALL):
-                    continue
-                # Allow entering the mouse's cell but not other cats' cells
-                if (nx, ny) in occupied and (nx, ny) != goal:
+                if not can_step(cx, cy, nx, ny):
                     continue
                 came_from[(nx, ny)] = current
                 queue.append((nx, ny))
 
-        # Reconstruct the first step toward goal
         if goal not in came_from:
-            # No path found — try any free adjacent cell (random fallback)
-            dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-            random.shuffle(dirs)
-            for dx, dy in dirs:
-                nx, ny = start[0] + dx, start[1] + dy
-                if not self.in_bounds(nx, ny):
-                    continue
-                if self.board[ny][nx] in (BLOCK, WALL):
-                    continue
-                if (nx, ny) in occupied and (nx, ny) != goal:
-                    continue
-                return nx, ny
-            return start  # truly stuck
+            return start
 
-        # Walk back from goal to find the first step
         step: tuple[int, int] = goal
         while came_from[step] != start:
             prev = came_from[step]
@@ -526,14 +550,22 @@ class GameState:
             step = prev
         return step
 
-    def _place_random_cells(self, kind: int, count: int) -> None:
+    def _place_random_cells(
+        self,
+        kind: int,
+        count: int,
+        forbidden: set[tuple[int, int]] | None = None,
+    ) -> None:
         placed = 0
         attempts = 0
         limit = count * 50
+        forbidden = forbidden or set()
         while placed < count and attempts < limit:
             attempts += 1
             x = random.randint(1, self.width - 2)
             y = random.randint(1, self.height - 2)
+            if (x, y) in forbidden:
+                continue
             if self.board[y][x] == EMPTY:
                 self.board[y][x] = kind
                 placed += 1

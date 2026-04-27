@@ -196,6 +196,30 @@ def test_cat_bfs_navigates_around_wall() -> None:
         assert state.cats[0][0] != initial_x, "Cat should have moved toward mouse via BFS"
 
 
+def test_cat_moves_diagonally_toward_mouse() -> None:
+    state = blank_state()
+    state.mouse_pos = (5, 5)
+    state.cats = [(3, 3)]
+
+    state.step_cats()
+
+    assert state.cats[0] == (4, 4)
+
+
+def test_cat_beelines_into_near_trap_space() -> None:
+    state = blank_state()
+    state.mouse_pos = (6, 6)
+    state.cats = [(3, 3)]
+
+    # Make (4,4) a risky near-trap cell (2 blocked sides, still beeline-worthy).
+    state.board[4][5] = BLOCK  # (5,4)
+    state.board[5][4] = BLOCK  # (4,5)
+
+    state.step_cats()
+
+    assert state.cats[0] == (4, 4)
+
+
 def test_pause_blocks_player_move() -> None:
     state = blank_state()
     state.paused = True
@@ -362,6 +386,30 @@ def test_level10_uses_preset_layout() -> None:
     assert state.board[3][5] == BLOCK
     assert state.board[2][10] == CHEESE
     assert len(state.cats) == 4
+
+
+def test_level1_has_more_blocks_than_preset_base() -> None:
+    state = GameState()
+    block_count = sum(
+        state.board[y][x] == BLOCK
+        for y in range(state.height)
+        for x in range(state.width)
+    )
+    # Base level-1 preset had 9 explicit blocks.
+    assert block_count > 9
+
+
+def test_procedural_levels_have_higher_block_density() -> None:
+    low = GameState(width=20, height=15)
+    low.reset_level(11)
+    high = GameState(width=20, height=15)
+    high.reset_level(18)
+
+    low_blocks = sum(low.board[y][x] == BLOCK for y in range(low.height) for x in range(low.width))
+    high_blocks = sum(high.board[y][x] == BLOCK for y in range(high.height) for x in range(high.width))
+
+    assert low_blocks >= 24 + 11 * 8 - 10  # allow placement variance on crowded boards
+    assert high_blocks >= low_blocks
 
 
 # ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------
