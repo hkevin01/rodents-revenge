@@ -227,12 +227,14 @@ def _load_sprite_pack(tile_size: int) -> SpritePack:
     raw_dir = root / "assets" / "sprites" / "raw" / "cat_sprites"
 
     sprite_size = int(tile_size * 0.9)
-    # Prefer the older-style strips for a closer retro look.
-    mouse_frames = _load_strip_frames(raw_dir / "rat" / "rat_0_walk.png", sprite_size, max_frames=4)
+    # Prefer a softer/cuter mouse strip first.
+    mouse_frames = _load_strip_frames(raw_dir / "mouse" / "mouse_1_walk.png", sprite_size, max_frames=4)
     cat_frames = _load_strip_frames(raw_dir / "cat_1" / "cat_1_walk.png", sprite_size, max_frames=8)
 
     if not mouse_frames:
         mouse_frames = _load_strip_frames(raw_dir / "mouse" / "mouse_0_walk.png", sprite_size, max_frames=4)
+    if not mouse_frames:
+        mouse_frames = _load_strip_frames(raw_dir / "rat" / "rat_0_walk.png", sprite_size, max_frames=4)
     if not cat_frames:
         cat_frames = _load_strip_frames(raw_dir / "cat_0" / "cat_0_walk.png", sprite_size, max_frames=8)
 
@@ -810,19 +812,41 @@ def run_game() -> None:
 
         mx, my = state.mouse_pos
         mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+        bob = int(math.sin(animation_frame / 7.0) * 2)
         if sprites.mouse_frames:
             frame = sprites.mouse_frames[(animation_frame // 8) % len(sprites.mouse_frames)]
             if mouse_facing < 0:
                 frame = pygame.transform.flip(frame, True, False)
+            pos = (
+                mouse_rect.centerx - frame.get_width() // 2,
+                mouse_rect.centery - frame.get_height() // 2 + bob,
+            )
             screen.blit(
                 frame,
-                (
-                    mouse_rect.centerx - frame.get_width() // 2,
-                    mouse_rect.centery - frame.get_height() // 2,
-                ),
+                pos,
             )
+            # Tiny blush dots for a softer look.
+            blush_y = pos[1] + frame.get_height() * 2 // 3
+            if mouse_facing >= 0:
+                lx = pos[0] + frame.get_width() // 3
+                rx = pos[0] + (frame.get_width() * 2) // 3
+            else:
+                lx = pos[0] + (frame.get_width() * 2) // 3
+                rx = pos[0] + frame.get_width() // 3
+            pygame.draw.circle(screen, (255, 170, 185), (lx, blush_y), 2)
+            pygame.draw.circle(screen, (255, 170, 185), (rx, blush_y), 2)
         else:
-            pygame.draw.ellipse(screen, colors["mouse"], mouse_rect.inflate(-8, -8))
+            body = mouse_rect.inflate(-10, -10)
+            body.y += bob
+            pygame.draw.ellipse(screen, (205, 232, 150), body)
+            ear_l = pygame.Rect(body.x + 4, body.y - 4, 7, 7)
+            ear_r = pygame.Rect(body.right - 11, body.y - 4, 7, 7)
+            pygame.draw.ellipse(screen, (218, 240, 168), ear_l)
+            pygame.draw.ellipse(screen, (218, 240, 168), ear_r)
+            pygame.draw.circle(screen, (255, 185, 195), ear_l.center, 2)
+            pygame.draw.circle(screen, (255, 185, 195), ear_r.center, 2)
+            pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width // 3, body.y + body.height * 2 // 3), 2)
+            pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width * 2 // 3, body.y + body.height * 2 // 3), 2)
 
         for tw in block_tweens:
             t = tw["t"]
