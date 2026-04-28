@@ -20,7 +20,7 @@ def _web_load() -> list[dict]:
         raw = platform.window.localStorage.getItem(_LS_KEY)
         if raw is None:
             return []
-        data = json.loads(raw)
+        data = json.loads(str(raw))
         if isinstance(data, list):
             for entry in data:
                 entry.setdefault("initials", "---")
@@ -34,7 +34,7 @@ def _web_save(scores: list[dict]) -> None:
     """Write scores to browser localStorage."""
     try:
         import platform  # type: ignore[import]
-        platform.window.localStorage.setItem(_LS_KEY, json.dumps(scores))
+        platform.window.localStorage.setItem(_LS_KEY, str(json.dumps(scores)))
     except Exception:
         pass
 

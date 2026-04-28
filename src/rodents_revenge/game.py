@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_MS = 500  # milliseconds between cat steps (device-independent)
+CAT_MOVE_DELAY_MS = 1000  # milliseconds between cat steps (device-independent)
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -613,14 +613,6 @@ class GameState:
             nx, ny = x + dx, y + dy
             if not self.in_bounds(nx, ny):
                 continue
-            # Mirror the corner-cutting rule used by the cat AI:
-            # a diagonal step is only valid when both adjacent orthogonal cells
-            # are free (not WALL or BLOCK).
-            if dx != 0 and dy != 0:
-                if self.board[y][nx] in (BLOCK, WALL, CHEESE):
-                    continue
-                if self.board[ny][x] in (BLOCK, WALL, CHEESE):
-                    continue
             if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
                 continue
             if (nx, ny) == self.mouse_pos:
@@ -664,12 +656,6 @@ class GameState:
                 return False
             if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
                 return False
-            # No corner-cutting: diagonal movement requires both edge-adjacent cells open.
-            if nx != cx and ny != cy:
-                if self.board[cy][nx] in (BLOCK, WALL, CHEESE):
-                    return False
-                if self.board[ny][cx] in (BLOCK, WALL, CHEESE):
-                    return False
             if (nx, ny) in occupied and (nx, ny) != goal:
                 return False
             return True
@@ -1434,15 +1420,15 @@ async def run_game() -> None:
                 pygame.draw.line(screen, stripe_col,
                                  (body_cx + sx_off, cb_r.top + 2),
                                  (body_cx + sx_off, cb_r.bottom - 2), 2)
-            # Ear: pointy triangle on top-BACK of head, drawn AFTER head
-            ear_bx = ch_cx - cat_fx * 7   # 7 px toward back from head center
+            # Ear: pointy triangle on top of head, toward BACK, fully within head circle
+            ear_bx = ch_cx - cat_fx * (ch_r // 2)  # half-radius back from head center
             ear_by = ch_cy - ch_r + 1      # near head top
-            ear_tip = (ear_bx, ear_by - 10)
-            ear_base_l = (ear_bx - 5, ear_by)
-            ear_base_r = (ear_bx + 5, ear_by)
+            ear_tip = (ear_bx, ear_by - 9)
+            ear_base_l = (ear_bx - 4, ear_by)
+            ear_base_r = (ear_bx + 4, ear_by)
             pygame.draw.polygon(screen, (200, 105, 25), [ear_tip, ear_base_l, ear_base_r])
             pygame.draw.polygon(screen, (255, 175, 165), [
-                (ear_bx, ear_by - 6), (ear_bx - 2, ear_by - 1), (ear_bx + 2, ear_by - 1)
+                (ear_bx, ear_by - 5), (ear_bx - 2, ear_by - 1), (ear_bx + 2, ear_by - 1)
             ])
             # Eye: yellow iris + black slit
             eye_x = ch_cx + cat_fx * 3
