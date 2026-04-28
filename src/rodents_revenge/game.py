@@ -1355,14 +1355,14 @@ async def run_game() -> None:
                 # Fallback cat model (when sprite sheet is unavailable)
                 body = rect.inflate(-10, -12)
                 body.y += int(math.sin(animation_frame / 9.0) * 1)
-                pygame.draw.ellipse(screen, (255, 132, 28), body)
-                # Ears
-                ear_l = [(body.x + 6, body.y + 2), (body.x + 12, body.y - 7), (body.x + 18, body.y + 4)]
-                ear_r = [(body.right - 6, body.y + 2), (body.right - 12, body.y - 7), (body.right - 18, body.y + 4)]
-                pygame.draw.polygon(screen, (255, 132, 28), ear_l)
-                pygame.draw.polygon(screen, (255, 132, 28), ear_r)
-                pygame.draw.polygon(screen, (255, 185, 170), [(body.x + 10, body.y + 1), (body.x + 12, body.y - 4), (body.x + 14, body.y + 2)])
-                pygame.draw.polygon(screen, (255, 185, 170), [(body.right - 10, body.y + 1), (body.right - 12, body.y - 4), (body.right - 14, body.y + 2)])
+                # Draw ears FIRST so body overlaps the base, leaving tips visible
+                ear_l = [(body.x + 4, body.y + 3), (body.x + 11, body.y - 9), (body.x + 19, body.y + 3)]
+                ear_r = [(body.right - 4, body.y + 3), (body.right - 11, body.y - 9), (body.right - 19, body.y + 3)]
+                pygame.draw.polygon(screen, (200, 105, 25), ear_l)
+                pygame.draw.polygon(screen, (200, 105, 25), ear_r)
+                pygame.draw.ellipse(screen, (235, 158, 65), body)
+                pygame.draw.polygon(screen, (255, 185, 170), [(body.x + 7, body.y + 2), (body.x + 11, body.y - 5), (body.x + 15, body.y + 2)])
+                pygame.draw.polygon(screen, (255, 185, 170), [(body.right - 7, body.y + 2), (body.right - 11, body.y - 5), (body.right - 15, body.y + 2)])
                 # Face
                 eye_y = body.y + body.height // 2 - 4
                 pygame.draw.circle(screen, (40, 26, 18), (body.centerx - 7, eye_y), 2)
@@ -1407,24 +1407,24 @@ async def run_game() -> None:
             ear_sz = max(4, TILE_SIZE // 7)
             ear_l = pygame.Rect(mouse_rect.centerx - TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
             ear_r = pygame.Rect(mouse_rect.centerx + TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
-            pygame.draw.ellipse(screen, (218, 240, 168), ear_l)
-            pygame.draw.ellipse(screen, (218, 240, 168), ear_r)
+            pygame.draw.ellipse(screen, (215, 205, 200), ear_l)
+            pygame.draw.ellipse(screen, (215, 205, 200), ear_r)
             pygame.draw.circle(screen, (255, 185, 195), ear_l.center, max(1, ear_sz // 4))
             pygame.draw.circle(screen, (255, 185, 195), ear_r.center, max(1, ear_sz // 4))
 
             nose = (mouse_rect.centerx, face_y + TILE_SIZE // 6)
             pygame.draw.circle(screen, (255, 158, 172), nose, max(1, TILE_SIZE // 18))
             whisk = max(6, TILE_SIZE // 5)
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1]), (nose[0] - whisk, nose[1] - 2), 1)
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1]), (nose[0] + whisk, nose[1] - 2), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1]), (nose[0] - whisk, nose[1] - 2), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1]), (nose[0] + whisk, nose[1] - 2), 1)
 
             tail_dir = -1 if mouse_facing > 0 else 1
             tail_start = (mouse_rect.centerx - TILE_SIZE // 3 if mouse_facing > 0 else mouse_rect.centerx + TILE_SIZE // 3,
                           mouse_rect.centery + TILE_SIZE // 7 + bob)
             tail_mid = (tail_start[0] + tail_dir * (TILE_SIZE // 4), tail_start[1] + TILE_SIZE // 10)
             tail_end = (tail_mid[0] + tail_dir * (TILE_SIZE // 4), tail_mid[1] - TILE_SIZE // 12)
-            pygame.draw.line(screen, (175, 205, 132), tail_start, tail_mid, 3)
-            pygame.draw.line(screen, (165, 196, 124), tail_mid, tail_end, 2)
+            pygame.draw.line(screen, (190, 180, 175), tail_start, tail_mid, 3)
+            pygame.draw.line(screen, (178, 168, 163), tail_mid, tail_end, 2)
         else:
             # Fallback mouse model (when sprite sheet is unavailable)
             shadow = mouse_rect.inflate(-14, -24)
@@ -1433,30 +1433,30 @@ async def run_game() -> None:
 
             body = mouse_rect.inflate(-10, -10)
             body.y += bob
-            pygame.draw.ellipse(screen, (205, 232, 150), body)
+            pygame.draw.ellipse(screen, (212, 200, 195), body)
             ear_l = pygame.Rect(body.x + 4, body.y - 4, 7, 7)
             ear_r = pygame.Rect(body.right - 11, body.y - 4, 7, 7)
-            pygame.draw.ellipse(screen, (218, 240, 168), ear_l)
-            pygame.draw.ellipse(screen, (218, 240, 168), ear_r)
+            pygame.draw.ellipse(screen, (212, 200, 195), ear_l)
+            pygame.draw.ellipse(screen, (212, 200, 195), ear_r)
             pygame.draw.circle(screen, (255, 185, 195), ear_l.center, 2)
             pygame.draw.circle(screen, (255, 185, 195), ear_r.center, 2)
             eye_y = body.y + body.height // 2 - 3
-            pygame.draw.circle(screen, (40, 55, 24), (body.centerx - 6, eye_y), 2)
-            pygame.draw.circle(screen, (40, 55, 24), (body.centerx + 6, eye_y), 2)
+            pygame.draw.circle(screen, (30, 30, 40), (body.centerx - 6, eye_y), 2)
+            pygame.draw.circle(screen, (30, 30, 40), (body.centerx + 6, eye_y), 2)
             nose = (body.centerx, eye_y + 6)
             pygame.draw.circle(screen, (255, 158, 172), nose, 2)
             # Whiskers
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1]), (nose[0] - 10, nose[1] - 2), 1)
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1] + 1), (nose[0] - 10, nose[1] + 3), 1)
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1]), (nose[0] + 10, nose[1] - 2), 1)
-            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1] + 1), (nose[0] + 10, nose[1] + 3), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1]), (nose[0] - 10, nose[1] - 2), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1] + 1), (nose[0] - 10, nose[1] + 3), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1]), (nose[0] + 10, nose[1] - 2), 1)
+            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1] + 1), (nose[0] + 10, nose[1] + 3), 1)
             # Tail reacts to facing direction
             tail_dir = -1 if mouse_facing > 0 else 1
             tail_start = (body.x + 2, body.centery + 1) if mouse_facing > 0 else (body.right - 2, body.centery + 1)
             tail_mid = (tail_start[0] + 8 * tail_dir, tail_start[1] + 3)
             tail_end = (tail_mid[0] + 8 * tail_dir, tail_mid[1] - 2)
-            pygame.draw.line(screen, (175, 205, 132), tail_start, tail_mid, 3)
-            pygame.draw.line(screen, (165, 196, 124), tail_mid, tail_end, 2)
+            pygame.draw.line(screen, (190, 180, 175), tail_start, tail_mid, 3)
+            pygame.draw.line(screen, (178, 168, 163), tail_mid, tail_end, 2)
             pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width // 3, body.y + body.height * 2 // 3), 2)
             pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width * 2 // 3, body.y + body.height * 2 // 3), 2)
 
@@ -1477,12 +1477,12 @@ async def run_game() -> None:
         # Room name badge
         room_surf = small_font.render(_theme["name"], True, (200, 188, 148))
         screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
-        # HUD touch buttons — Pause and Help, right side
-        lives_reserved = 30 + max(0, state.lives) * 22
-        help_x = SCREEN_WIDTH - lives_reserved - TBTN_W
-        pause_x = help_x - TBTN_W - 10
-        _tbtn_pause_rect.topleft = (pause_x, HUD_HEIGHT // 2 - TBTN_H // 2)
-        _tbtn_help_rect.topleft  = (help_x,  HUD_HEIGHT // 2 - TBTN_H // 2)
+        # HUD touch buttons — Pause and Help, centred in the HUD
+        _btn_y = HUD_HEIGHT // 2 - TBTN_H // 2
+        pause_x = SCREEN_WIDTH // 2 - TBTN_W - 5
+        help_x  = SCREEN_WIDTH // 2 + 5
+        _tbtn_pause_rect.topleft = (pause_x, _btn_y)
+        _tbtn_help_rect.topleft  = (help_x,  _btn_y)
         _draw_touch_btn(screen, _tbtn_pause_rect, "⏸ PAUSE", active=state.paused)
         _draw_touch_btn(screen, _tbtn_help_rect,  "? HELP",  active=show_help)
 
