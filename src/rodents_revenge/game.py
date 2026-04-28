@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 30   # 30 frames @ 60 FPS ≈ 2.0 cat steps/sec
+CAT_MOVE_DELAY_FRAMES = 42   # 42 frames @ 60 FPS ≈ 1.4 cat steps/sec
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -1205,9 +1205,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus":  8, "cat_count_offset": -1},
+        "easy":   {"cat_delay_bonus": 10, "cat_count_offset": -1},
         "normal": {"cat_delay_bonus":  0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus": -5, "cat_count_offset":  1},
+        "hard":   {"cat_delay_bonus": -6, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
@@ -1643,7 +1643,7 @@ async def run_game() -> None:
         nonlocal initials_key_rects
 
         # Dark panel
-        panel_w, panel_h = 600, 390
+        panel_w, panel_h = 600, 420
         panel_x = SCREEN_WIDTH // 2 - panel_w // 2
         panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
         bg = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
@@ -1699,9 +1699,9 @@ async def run_game() -> None:
                 screen.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
                 new_key_rects.append((ch, r))
 
-        # DONE button
+        # DONE button — placed below the last keyboard row with a clear gap
         done_r = pygame.Rect(0, 0, 180, 50)
-        done_r.center = (SCREEN_WIDTH // 2, ky0 + 3 * (btn_h2 + btn_gap) + 10)
+        done_r.center = (SCREEN_WIDTH // 2, ky0 + 2 * (btn_h2 + btn_gap) + btn_h2 + btn_gap + done_r.height // 2 + 6)
         done_col = (50, 110, 60) if entry_initials else (45, 45, 35)
         pygame.draw.rect(screen, done_col, done_r, border_radius=10)
         pygame.draw.rect(screen, (120, 200, 130) if entry_initials else (80, 80, 60), done_r, 2, border_radius=10)
@@ -1723,8 +1723,7 @@ async def run_game() -> None:
             screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, 158))
             for i, entry in enumerate(scores[:5]):
                 line = small_font.render(
-                    f"{i + 1}.  {entry['score']:05d}   LVL {entry['level']:02d}",
-                                        f"{i + 1}.  {entry.get('initials','---')}  {entry['score']:05d}   LVL {entry['level']:02d}",
+                    f"{i + 1}.  {entry.get('initials', '---')}  {entry['score']:05d}   LVL {entry['level']:02d}",
                     True,
                     (255, 220, 60) if i == 0 else (200, 190, 160),
                 )
