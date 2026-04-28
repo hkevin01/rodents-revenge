@@ -40,6 +40,9 @@ TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
 CAT_MOVE_DELAY_MS = 2000  # milliseconds between cat steps (device-independent)
+COUNTDOWN_STEP_MS  = 800   # ms each of 3, 2, 1 is shown
+COUNTDOWN_GO_MS    = 500   # ms "GO!" is shown
+COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
