@@ -171,7 +171,7 @@ def test_cheese_collected_for_score() -> None:
     state.handle_player_move(1, 0)
 
     assert state.board[2][3] == EMPTY
-    assert state.score == CHEESE_SCORE + 1
+    assert state.score == CHEESE_SCORE   # no move-step score in original rules
 
 
 def test_cat_bfs_navigates_around_wall() -> None:

@@ -34,12 +34,12 @@ BLOCK = 1
 WALL = 2
 CHEESE = 3
 
-MOUSE_STEP_SCORE = 1
+MOUSE_STEP_SCORE = 0   # original game: no points for movement
 CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 8
+CAT_MOVE_DELAY_FRAMES = 28
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -580,16 +580,15 @@ class GameState:
         self._resolve_trapped_cats()
 
     def _resolve_trapped_cats(self) -> None:
-        survivors: list[tuple[int, int]] = []
-        trap_count = 0
-        for cat in self.cats:
-            if self.is_cat_trapped(*cat):
-                cx, cy = cat
-                self.board[cy][cx] = CHEESE
-                trap_count += 1
-            else:
-                survivors.append(cat)
-        self.cats = survivors
+        # First pass: identify all trapped cats against the current board
+        # (do NOT modify the board yet, so each cat is evaluated fairly)
+        trapped = [cat for cat in self.cats if self.is_cat_trapped(*cat)]
+        trap_set = set(trapped)
+        # Second pass: convert all trapped cats to cheese at once
+        for cx, cy in trapped:
+            self.board[cy][cx] = CHEESE
+        self.cats = [cat for cat in self.cats if cat not in trap_set]
+        trap_count = len(trapped)
         if 0 < len(self.cats) <= 2 and not self.near_clear_warned:
             self.near_clear_warned = True
             self.pending_sounds.append("warn")
@@ -1184,7 +1183,7 @@ async def run_game() -> None:
         "grid": (38, 34, 30),
         "wall": (85, 72, 60),
         "block": (120, 102, 84),
-        "mouse": (190, 230, 120),
+        "mouse": (210, 200, 190),
         "cat": (255, 130, 0),
         "cheese": (254, 220, 90),
         "hud": (25, 23, 20),
@@ -1354,95 +1353,102 @@ async def run_game() -> None:
                 pygame.draw.ellipse(glow_surf, (255, 140, 0, alpha),
                                     glow_surf.get_rect().inflate(-4, -4))
                 screen.blit(glow_surf, rect.topleft)
-            # Side-profile cat, always faces toward the player
+            # Side-profile cat — always faces toward the player
             cat_fx = 1 if cx <= mx else -1
             cbx = rect.centerx
-            cby = rect.centery + int(math.sin(animation_frame / 9.0) * 1)
-            cbw, cbh = 26, 14
-            cb_cx = cbx - cat_fx * 2
-            cb_cy = cby + 3
-            cb_r = pygame.Rect(cb_cx - cbw // 2, cb_cy - cbh // 2, cbw, cbh)
-            ch_cx = cbx + cat_fx * 9
-            ch_cy = cby - 1
+            cby = rect.centery + int(math.sin(animation_frame / 9.0))
+            cbw, cbh = 28, 14
+            body_cx = cbx - cat_fx * 1
+            body_cy = cby + 4
+            cb_r = pygame.Rect(body_cx - cbw // 2, body_cy - cbh // 2, cbw, cbh)
+            ch_cx = cbx + cat_fx * 10
+            ch_cy = cby
             ch_r = 9
-            # Pointed ear drawn first; body/head painted over its base so only tip pokes up
-            ear_tip = (ch_cx - cat_fx * 2, ch_cy - ch_r - 7)
-            ear_bb  = (ch_cx - cat_fx * 7, ch_cy - ch_r + 3)
-            ear_bf  = (ch_cx + cat_fx * 3, ch_cy - ch_r + 3)
-            pygame.draw.polygon(screen, (200, 105, 25), [ear_tip, ear_bb, ear_bf])
+            # Tail first (body will cover its base)
+            ct_x0 = body_cx - cat_fx * (cbw // 2)
+            ct_x1 = ct_x0 - cat_fx * 8
+            ct_y1 = body_cy - 4
+            ct_x2 = ct_x1 - cat_fx * 4
+            ct_y2 = ct_y1 - 10
+            pygame.draw.line(screen, (220, 140, 55), (ct_x0, body_cy), (ct_x1, ct_y1), 3)
+            pygame.draw.line(screen, (210, 130, 50), (ct_x1, ct_y1), (ct_x2, ct_y2), 2)
+            # Body + head (covers tail base)
             pygame.draw.ellipse(screen, (235, 158, 65), cb_r)
             pygame.draw.circle(screen, (235, 158, 65), (ch_cx, ch_cy), ch_r)
-            i_tip = (ear_tip[0], ear_tip[1] + 4)
-            i_b   = (ear_bb[0] + cat_fx * 2, ear_bb[1] - 1)
-            i_f   = (ear_bf[0] - cat_fx * 2, ear_bf[1] - 1)
-            pygame.draw.polygon(screen, (255, 185, 170), [i_tip, i_b, i_f])
-            # Eye: yellow iris + black slit pupil
-            eye_c = (ch_cx + cat_fx * 3, ch_cy - 3)
-            pygame.draw.circle(screen, (255, 220, 80), eye_c, 3)
-            pygame.draw.circle(screen, (10, 10, 10), eye_c, 1)
-            # Nose
-            cn_cx = ch_cx + cat_fx * (ch_r - 2)
-            cn_cy = ch_cy + 2
-            pygame.draw.circle(screen, (255, 160, 150), (cn_cx, cn_cy), 2)
-            # Whiskers
-            pygame.draw.line(screen, (220, 220, 200), (cn_cx, cn_cy - 1), (cn_cx + cat_fx * 10, cn_cy - 3), 1)
-            pygame.draw.line(screen, (220, 220, 200), (cn_cx, cn_cy + 1), (cn_cx + cat_fx * 10, cn_cy + 3), 1)
-            # Tail curls up from rear of body
-            ct_sx = cb_cx - cat_fx * (cbw // 2)
-            ct_mx = ct_sx - cat_fx * 8
-            ct_my = cb_cy - 5
-            ct_ex = ct_mx - cat_fx * 3
-            ct_ey = ct_my - 10
-            pygame.draw.line(screen, (220, 140, 55), (ct_sx, cb_cy), (ct_mx, ct_my), 3)
-            pygame.draw.line(screen, (210, 130, 50), (ct_mx, ct_my), (ct_ex, ct_ey), 2)
+            # Ear: pointy triangle on top-BACK of head, drawn AFTER head
+            ear_bx = ch_cx - cat_fx * 5   # 5 px toward back from head center
+            ear_by = ch_cy - ch_r + 1      # near head top
+            ear_tip = (ear_bx, ear_by - 10)
+            ear_base_l = (ear_bx - 5, ear_by)
+            ear_base_r = (ear_bx + 5, ear_by)
+            pygame.draw.polygon(screen, (200, 105, 25), [ear_tip, ear_base_l, ear_base_r])
+            pygame.draw.polygon(screen, (255, 175, 165), [
+                (ear_bx, ear_by - 6), (ear_bx - 2, ear_by - 1), (ear_bx + 2, ear_by - 1)
+            ])
+            # Eye: yellow iris + black slit
+            eye_x = ch_cx + cat_fx * 3
+            eye_y = ch_cy - 2
+            pygame.draw.circle(screen, (255, 220, 80), (eye_x, eye_y), 3)
+            pygame.draw.circle(screen, (10, 10, 10), (eye_x, eye_y), 1)
+            # Nose + whiskers
+            nose_x = ch_cx + cat_fx * (ch_r - 1)
+            nose_y = ch_cy + 3
+            pygame.draw.circle(screen, (255, 160, 150), (nose_x, nose_y), 2)
+            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y - 1), (nose_x + cat_fx * 10, nose_y - 3), 1)
+            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y + 1), (nose_x + cat_fx * 10, nose_y + 3), 1)
             # Legs
-            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(cb_cx - 7, cb_r.bottom - 3, 9, 5))
-            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(cb_cx + 2, cb_r.bottom - 3, 9, 5))
+            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx - 7, cb_r.bottom - 3, 9, 5))
+            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx + 2, cb_r.bottom - 3, 9, 5))
 
         mx, my = state.mouse_pos
         mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
         bob = int(math.sin(animation_frame / 7.0) * 2)
-        # Side-profile mouse drawing (always procedural — ignores sprite sheets)
+        # Side-profile mouse drawing (always procedural)
         fx = 1 if mouse_facing >= 0 else -1
         bx = mouse_rect.centerx
         by = mouse_rect.centery + bob
         # Shadow
-        pygame.draw.ellipse(screen, (20, 18, 14), pygame.Rect(bx - 14, by + 11, 28, 7))
+        pygame.draw.ellipse(screen, (18, 16, 12), pygame.Rect(bx - 14, by + 12, 28, 6))
+        # Tail first (body overlaps its base)
+        mt_x0 = bx - fx * 11
+        mt_x1 = mt_x0 - fx * 8
+        mt_x2 = mt_x1 - fx * 5
+        pygame.draw.line(screen, (190, 180, 175), (mt_x0, by + 3), (mt_x1, by + 7), 3)
+        pygame.draw.line(screen, (178, 168, 163), (mt_x1, by + 7), (mt_x2, by + 1), 2)
         # Body: horizontal oval
-        mbw, mbh = 22, 12
-        mb_cx = bx - fx * 3
-        mb_cy = by + 2
+        mbw, mbh = 24, 12
+        mb_cx = bx - fx * 2
+        mb_cy = by + 3
         mb_r = pygame.Rect(mb_cx - mbw // 2, mb_cy - mbh // 2, mbw, mbh)
-        # Head: circle at front
-        mh_cx = bx + fx * 9
-        mh_cy = by - 2
-        mh_r = 7
-        # Ear: round, behind/above head — draw first so head overlaps its base
-        me_cx = mh_cx - fx * 2
-        me_cy = mh_cy - mh_r + 1
-        pygame.draw.circle(screen, (215, 205, 200), (me_cx, me_cy), 5)
-        pygame.draw.circle(screen, (255, 185, 195), (me_cx, me_cy), 2)
         pygame.draw.ellipse(screen, (212, 200, 195), mb_r)
+        # Head: circle at front, overlaps body edge
+        mh_cx = bx + fx * 10
+        mh_cy = by - 1
+        mh_r = 7
         pygame.draw.circle(screen, (212, 200, 195), (mh_cx, mh_cy), mh_r)
+        # Ear: round disc sitting on top of head, toward BACK of head
+        # Center placed at head-top so lower half overlaps head (natural mount)
+        ear_cx = mh_cx - fx * 3   # back side of head
+        ear_cy = mh_cy - mh_r     # at head top surface
+        ear_r = 5
+        pygame.draw.circle(screen, (215, 205, 200), (ear_cx, ear_cy), ear_r)
+        pygame.draw.circle(screen, (245, 180, 185), (ear_cx, ear_cy), 2)   # inner ear
         # Snout nub
-        ms_cx = mh_cx + fx * (mh_r - 1)
-        ms_cy = mh_cy + 2
-        pygame.draw.ellipse(screen, (225, 215, 210), pygame.Rect(ms_cx - 3, ms_cy - 2, 6, 4))
-        # Nose + eye
-        mn_x = ms_cx + fx * 3
-        pygame.draw.circle(screen, (255, 158, 172), (mn_x, ms_cy), 2)
-        pygame.draw.circle(screen, (30, 30, 40), (mh_cx + fx * 2, mh_cy - 3), 2)
-        pygame.draw.circle(screen, (200, 230, 255), (mh_cx + fx * 2, mh_cy - 3), 1)
+        if fx > 0:
+            snout_r = pygame.Rect(mh_cx + mh_r - 2, mh_cy + 1, 6, 4)
+        else:
+            snout_r = pygame.Rect(mh_cx - mh_r - 4, mh_cy + 1, 6, 4)
+        pygame.draw.ellipse(screen, (225, 215, 210), snout_r)
+        # Nose
+        nose_x = mh_cx + fx * (mh_r + 4)
+        nose_y = mh_cy + 3
+        pygame.draw.circle(screen, (255, 158, 172), (nose_x, nose_y), 2)
+        # Eye: dark with highlight
+        pygame.draw.circle(screen, (30, 30, 40), (mh_cx + fx * 3, mh_cy - 3), 2)
+        pygame.draw.circle(screen, (200, 230, 255), (mh_cx + fx * 3, mh_cy - 3), 1)
         # Whiskers
-        pygame.draw.line(screen, (170, 165, 160), (mn_x, ms_cy), (mn_x + fx * 9, ms_cy - 2), 1)
-        pygame.draw.line(screen, (170, 165, 160), (mn_x, ms_cy), (mn_x + fx * 9, ms_cy + 2), 1)
-        # Tail from rear of body, curling behind
-        mt_sx = mb_cx - fx * (mbw // 2)
-        mt_mx = mt_sx - fx * 7
-        mt_my = mb_cy + 6
-        mt_ex = mt_mx - fx * 5
-        pygame.draw.line(screen, (190, 180, 175), (mt_sx, mb_cy), (mt_mx, mt_my), 3)
-        pygame.draw.line(screen, (178, 168, 163), (mt_mx, mt_my), (mt_ex, mt_my - 8), 2)
+        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x + fx * 9, nose_y - 2), 1)
+        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x + fx * 9, nose_y + 2), 1)
         # Legs
         pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx - 6, mb_r.bottom - 3, 8, 5))
         pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx + 2, mb_r.bottom - 3, 8, 5))
@@ -1990,6 +1996,8 @@ async def run_game() -> None:
                     elif _tbtn_help_rect.collidepoint(sx, sy):
                         if not state.game_over and not state.paused:
                             show_help = not show_help
+                    elif state.paused and _tbtn_resume_rect.collidepoint(sx, sy):
+                        state.paused = False
                     elif state.game_over:
                         if _tbtn_menu_rect.collidepoint(sx, sy):
                             phase = "title"
@@ -2060,7 +2068,7 @@ async def run_game() -> None:
                 vjoy_held_frames = 0
 
         if phase == "playing" and not state.paused and not show_help:
-            if player_moved and not state.game_over:
+            if not state.game_over:
                 cat_frame_counter += 1
                 cat_delay = max(2, CAT_MOVE_DELAY_FRAMES - (state.level - 1) + state.cat_delay_bonus)
                 if cat_frame_counter >= cat_delay:
@@ -2102,6 +2110,28 @@ async def run_game() -> None:
 
         if phase == "playing":
             draw_board()
+            if state.paused and not state.game_over:
+                # Pause overlay
+                ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                ov.fill((0, 0, 0, 130))
+                screen.blit(ov, (0, 0))
+                # Blurred panel
+                panel_w, panel_h = 340, 200
+                panel_x = SCREEN_WIDTH // 2 - panel_w // 2
+                panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
+                panel_bg = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+                panel_bg.fill((20, 18, 14, 220))
+                screen.blit(panel_bg, (panel_x, panel_y))
+                pygame.draw.rect(screen, (160, 148, 110), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
+                # Title
+                p_title = title_font.render("PAUSED", True, (240, 220, 100))
+                screen.blit(p_title, (SCREEN_WIDTH // 2 - p_title.get_width() // 2, panel_y + 24))
+                # Hints
+                p_hint1 = small_font.render("Press  P  or tap PAUSE to resume", True, (180, 170, 140))
+                screen.blit(p_hint1, (SCREEN_WIDTH // 2 - p_hint1.get_width() // 2, panel_y + 82))
+                # Resume button
+                _tbtn_resume_rect.center = (SCREEN_WIDTH // 2, panel_y + 148)
+                _draw_touch_btn(screen, _tbtn_resume_rect, "RESUME", (48, 110, 58), (180, 255, 190))
             draw_virtual_joystick()
             if entering_initials:
                 draw_initials_entry()
