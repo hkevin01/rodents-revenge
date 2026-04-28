@@ -1204,6 +1204,7 @@ async def run_game() -> None:
     tiny_font = pygame.font.SysFont("monospace", 14)
     sprites = _load_sprite_pack(TILE_SIZE)
     title_font = pygame.font.SysFont("monospace", 40, bold=True)
+    big_title_font = pygame.font.SysFont("monospace", 64, bold=True)
     snd: dict[str, pygame.mixer.Sound | None] = {}
     try:
         snd["move"]  = _gen_tone(880,  0.04, vol=0.12)
@@ -1748,87 +1749,141 @@ async def run_game() -> None:
 
 
     def draw_title_screen() -> None:
-        screen.fill((10, 8, 6))
-        title_surf = title_font.render(GAME_TITLE.upper(), True, (220, 200, 80))
-        screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, 55))
-        sub_surf = small_font.render("Python Clone", True, (140, 130, 90))
-        screen.blit(sub_surf, (SCREEN_WIDTH // 2 - sub_surf.get_width() // 2, 108))
-        label = font.render("HIGH SCORES", True, colors["text"])
-        screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, 158))
+        # --- Background with subtle grid dot pattern ---
+        screen.fill((12, 10, 8))
+        dot_col = (24, 21, 17)
+        for gx in range(0, SCREEN_WIDTH + 1, 40):
+            for gy in range(0, SCREEN_HEIGHT + 1, 40):
+                pygame.draw.circle(screen, dot_col, (gx, gy), 1)
+        # Vignette: four dark edge bands
+        vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        for depth in range(48):
+            alpha = int(100 * (1 - depth / 48) ** 2)
+            pygame.draw.rect(vig, (0, 0, 0, alpha),
+                             (depth, depth, SCREEN_WIDTH - depth * 2, SCREEN_HEIGHT - depth * 2), 1)
+        screen.blit(vig, (0, 0))
+
+        # --- Title: shadow + outline glow + main text ---
+        title_text = GAME_TITLE.upper()
+        t_shadow = big_title_font.render(title_text, True, (0, 0, 0))
+        screen.blit(t_shadow, (SCREEN_WIDTH // 2 - t_shadow.get_width() // 2 + 4, 26))
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            t_outline = big_title_font.render(title_text, True, (90, 72, 14))
+            screen.blit(t_outline, (SCREEN_WIDTH // 2 - t_outline.get_width() // 2 + dx, 22 + dy))
+        t_main = big_title_font.render(title_text, True, (242, 218, 85))
+        screen.blit(t_main, (SCREEN_WIDTH // 2 - t_main.get_width() // 2, 22))
+
+        # --- Tagline ---
+        sub_surf = small_font.render("A Cat & Mouse Puzzle Game", True, (158, 146, 100))
+        screen.blit(sub_surf, (SCREEN_WIDTH // 2 - sub_surf.get_width() // 2, 100))
+
+        # Decorative separator
+        sep_y, sep_cx = 126, SCREEN_WIDTH // 2
+        pygame.draw.line(screen, (55, 52, 38), (sep_cx - 170, sep_y), (sep_cx - 18, sep_y), 1)
+        pygame.draw.circle(screen, (120, 108, 62), (sep_cx, sep_y), 4)
+        pygame.draw.line(screen, (55, 52, 38), (sep_cx + 18, sep_y), (sep_cx + 170, sep_y), 1)
+
+        # --- HIGH SCORES panel ---
+        panel_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, 138, 500, 232)
+        panel_surf = pygame.Surface((panel_rect.width, panel_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(panel_surf, (0, 0, 0, 135), panel_surf.get_rect(), border_radius=14)
+        screen.blit(panel_surf, panel_rect.topleft)
+        pygame.draw.rect(screen, (62, 57, 40), panel_rect, 1, border_radius=14)
+        hs_label = font.render("*  HIGH SCORES  *", True, (220, 198, 74))
+        screen.blit(hs_label, (SCREEN_WIDTH // 2 - hs_label.get_width() // 2, 152))
         if scores:
             for i, entry in enumerate(scores[:5]):
+                row_col = (255, 220, 60) if i == 0 else ((205, 188, 155) if i < 3 else (155, 148, 118))
+                rank = ["1ST", "2ND", "3RD", "4TH", "5TH"][i]
                 line = small_font.render(
-                    f"{i + 1}.  {entry.get('initials', '---')}  {entry['score']:05d}   LVL {entry['level']:02d}",
-                    True,
-                    (255, 220, 60) if i == 0 else (200, 190, 160),
+                    f"{rank}  {entry.get('initials', '---'):<3}   {entry['score']:>6d}   LVL {entry['level']:02d}",
+                    True, row_col,
                 )
-                screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 192 + i * 28))
+                screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 186 + i * 30))
         else:
-            empty = small_font.render("No scores yet — play a game!", True, (130, 125, 100))
-            screen.blit(empty, (SCREEN_WIDTH // 2 - empty.get_width() // 2, 200))
-        # Difficulty selector — large touch-friendly buttons
-        dlabel = small_font.render("DIFFICULTY", True, (160, 155, 130))
-        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 240))
-        diff_colors = {"easy": (50, 120, 60), "normal": (60, 60, 100), "hard": (120, 40, 40)}
-        diff_text_colors = {"easy": (140, 240, 160), "normal": (220, 216, 255), "hard": (255, 150, 140)}
-        diff_rects: list[pygame.Rect] = []
-        btn_w, btn_h = 130, 52
-        x_offsets = [-160, 0, 160]
+            empty = small_font.render("No scores yet  -  be the first!", True, (128, 122, 98))
+            screen.blit(empty, (SCREEN_WIDTH // 2 - empty.get_width() // 2, 218))
+
+        # --- Difficulty selector ---
+        dlabel = small_font.render("-  SELECT DIFFICULTY  -", True, (168, 158, 116))
+        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 248))
+        diff_colors     = {"easy": (36, 100, 46), "normal": (38, 40, 100), "hard": (108, 28, 28)}
+        diff_text_cols  = {"easy": (130, 240, 148), "normal": (188, 186, 255), "hard": (255, 138, 128)}
+        diff_glow_cols  = {"easy": (70, 210, 90),  "normal": (120, 120, 255), "hard": (255, 90, 80)}
+        btn_w, btn_h = 158, 62
+        x_offsets = [-170, 0, 170]
         for i, d in enumerate(DIFFICULTIES):
             r = pygame.Rect(0, 0, btn_w, btn_h)
-            r.center = (SCREEN_WIDTH // 2 + x_offsets[i], SCREEN_HEIGHT - 200)
-            diff_rects.append(r)
+            r.center = (SCREEN_WIDTH // 2 + x_offsets[i], SCREEN_HEIGHT - 195)
             active = (i == diff_idx)
-            base_col = diff_colors[d]
-            # Drop-shadow
-            shadow_r = r.move(2, 3)
-            pygame.draw.rect(screen, (0, 0, 0, 0), shadow_r, border_radius=10)  # placeholder; real shadow below
-            sh_s = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
-            pygame.draw.rect(sh_s, (0, 0, 0, 70), sh_s.get_rect(), border_radius=10)
-            screen.blit(sh_s, shadow_r.topleft)
-            bright_col = tuple(min(255, c + 40) for c in base_col)
-            col = bright_col if active else base_col  # type: ignore[assignment]
-            pygame.draw.rect(screen, col, r, border_radius=10)
-            # Inner highlight
-            hi_s = pygame.Surface((r.width - 8, r.height // 2), pygame.SRCALPHA)
-            pygame.draw.rect(hi_s, (255, 255, 255, 30), hi_s.get_rect(), border_radius=8)
-            screen.blit(hi_s, (r.x + 4, r.y + 2))
-            border_col = diff_text_colors[d] if active else (80, 75, 60)
-            pygame.draw.rect(screen, border_col, r, 2, border_radius=10)
-            lbl = small_font.render(d.upper(), True, diff_text_colors[d] if active else (110, 105, 80))
-            screen.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
+            # Shadow
+            sh_s = pygame.Surface((r.width + 4, r.height + 6), pygame.SRCALPHA)
+            pygame.draw.rect(sh_s, (0, 0, 0, 85), sh_s.get_rect(), border_radius=13)
+            screen.blit(sh_s, (r.x - 1, r.y + 4))
+            # Glow ring if active
+            if active:
+                glow_s = pygame.Surface((r.width + 12, r.height + 12), pygame.SRCALPHA)
+                pygame.draw.rect(glow_s, (*diff_glow_cols[d], 55), glow_s.get_rect(), border_radius=16)
+                screen.blit(glow_s, (r.x - 6, r.y - 6))
+            # Fill
+            fill_col = tuple(min(255, c + 52) for c in diff_colors[d]) if active else diff_colors[d]
+            pygame.draw.rect(screen, fill_col, r, border_radius=12)
+            # Inner top sheen
+            hi_s = pygame.Surface((r.width - 8, r.height // 2 - 2), pygame.SRCALPHA)
+            pygame.draw.rect(hi_s, (255, 255, 255, 38 if active else 16), hi_s.get_rect(), border_radius=9)
+            screen.blit(hi_s, (r.x + 4, r.y + 4))
+            # Border
+            border_col = diff_glow_cols[d] if active else (62, 58, 44)
+            pygame.draw.rect(screen, border_col, r, 3 if active else 1, border_radius=12)
+            # Label
+            txt_col = diff_text_cols[d] if active else (108, 104, 78)
+            lbl = small_font.render(d.upper(), True, txt_col)
+            lbl_y_off = -4 if active else 0
+            screen.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery + lbl_y_off - lbl.get_height() // 2))
+            if active:
+                ck = tiny_font.render("selected", True, (*diff_text_cols[d][:3],))
+                screen.blit(ck, (r.centerx - ck.get_width() // 2, r.centery + 10))
 
-        # Big PLAY button
-        play_rect = pygame.Rect(0, 0, 220, 64)
-        play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
-        pulse = (animation_frame // 30) % 2 == 0
-        play_col = (65, 140, 75) if pulse else (48, 112, 58)
+        # --- PLAY button with smooth pulsing glow ---
+        play_rect = pygame.Rect(0, 0, 290, 74)
+        play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
+        pulse_v = (math.sin(animation_frame / 60.0 * math.pi * 2) + 1) / 2  # 0..1 smooth
+        play_col = (
+            int(48 + 28 * pulse_v),
+            int(118 + 50 * pulse_v),
+            int(58 + 28 * pulse_v),
+        )
+        # Outer glow ring
+        glow_r = play_rect.inflate(int(10 + 8 * pulse_v), int(10 + 8 * pulse_v))
+        glow_surf = pygame.Surface((glow_r.width, glow_r.height), pygame.SRCALPHA)
+        pygame.draw.rect(glow_surf, (90, 210, 110, int(35 + 45 * pulse_v)), glow_surf.get_rect(), border_radius=20)
+        screen.blit(glow_surf, glow_r.topleft)
         # Shadow
-        sh_p = pygame.Surface((play_rect.width, play_rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(sh_p, (0, 0, 0, 90), sh_p.get_rect(), border_radius=14)
-        screen.blit(sh_p, play_rect.move(3, 4).topleft)
-        pygame.draw.rect(screen, play_col, play_rect, border_radius=14)
-        # Inner top highlight
-        hi_p = pygame.Surface((play_rect.width - 8, play_rect.height // 2), pygame.SRCALPHA)
-        pygame.draw.rect(hi_p, (255, 255, 255, 40), hi_p.get_rect(), border_radius=10)
-        screen.blit(hi_p, (play_rect.x + 4, play_rect.y + 3))
-        pygame.draw.rect(screen, (130, 230, 150) if pulse else (100, 200, 120), play_rect, 3, border_radius=14)
-        play_lbl = font.render("PLAY", True, (200, 255, 210))
-        # Draw a filled triangle (play icon) to the left of the text
-        lbl_w = play_lbl.get_width() + 24
-        lbl_x = play_rect.centerx - lbl_w // 2
-        lbl_y = play_rect.centery - play_lbl.get_height() // 2
-        tri_cx = lbl_x + 8
-        tri_cy = play_rect.centery
-        pygame.draw.polygon(screen, (200, 255, 210), [
-            (tri_cx - 6, tri_cy - 8), (tri_cx + 8, tri_cy), (tri_cx - 6, tri_cy + 8)
-        ])
-        screen.blit(play_lbl, (lbl_x + 20, lbl_y))
+        sh_p = pygame.Surface((play_rect.width + 6, play_rect.height + 6), pygame.SRCALPHA)
+        pygame.draw.rect(sh_p, (0, 0, 0, 105), sh_p.get_rect(), border_radius=18)
+        screen.blit(sh_p, play_rect.move(3, 5).topleft)
+        # Fill
+        pygame.draw.rect(screen, play_col, play_rect, border_radius=16)
+        # Top inner sheen
+        hi_p = pygame.Surface((play_rect.width - 12, play_rect.height // 2 - 4), pygame.SRCALPHA)
+        pygame.draw.rect(hi_p, (255, 255, 255, 42), hi_p.get_rect(), border_radius=12)
+        screen.blit(hi_p, (play_rect.x + 6, play_rect.y + 5))
+        # Border
+        border_g = int(130 + 90 * pulse_v)
+        pygame.draw.rect(screen, (border_g // 2, border_g, border_g // 2 + 10), play_rect, 3, border_radius=16)
+        # Label using title_font for large readable text
+        play_lbl = title_font.render("  PLAY  ", True, (215, 255, 220))
+        screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2,
+                                play_rect.centery - play_lbl.get_height() // 2))
 
-        legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (100, 95, 75))
-        legal2 = tiny_font.render("Unofficial fan remake using CC-BY licensed assets", True, (100, 95, 75))
-        screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 44))
-        screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 28))
+        # "Tap or click" hint
+        hint = tiny_font.render("Tap  or  Click  PLAY  to  Begin", True, (96, 92, 68))
+        screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 66))
+
+        legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (78, 74, 56))
+        legal2 = tiny_font.render("Unofficial fan remake  -  open source", True, (78, 74, 56))
+        screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 46))
+        screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 30))
 
     while running:
         animation_frame += 1
@@ -1843,17 +1898,17 @@ async def run_game() -> None:
                 sy = int(event.y * SCREEN_HEIGHT)
                 if phase == "title":
                     # Difficulty buttons — three distinct rects in bottom strip
-                    btn_w2, btn_h2 = 130, 52
-                    x_offsets2 = [-160, 0, 160]
+                    btn_w2, btn_h2 = 158, 62
+                    x_offsets2 = [-170, 0, 170]
                     for ti, _d in enumerate(DIFFICULTIES):
                         r2 = pygame.Rect(0, 0, btn_w2, btn_h2)
-                        r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 200)
+                        r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 195)
                         if r2.collidepoint(sx, sy):
                             diff_idx = ti
                             break
                     # PLAY button
-                    play_r = pygame.Rect(0, 0, 220, 64)
-                    play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
+                    play_r = pygame.Rect(0, 0, 290, 74)
+                    play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     if play_r.collidepoint(sx, sy):
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
                         state = GameState(
@@ -2017,17 +2072,17 @@ async def run_game() -> None:
                 sx, sy = event.pos
                 if phase == "title":
                     # Difficulty buttons
-                    btn_w_m, btn_h_m = 130, 52
-                    x_offsets_m = [-160, 0, 160]
+                    btn_w_m, btn_h_m = 158, 62
+                    x_offsets_m = [-170, 0, 170]
                     for ti, _d in enumerate(DIFFICULTIES):
                         r_m = pygame.Rect(0, 0, btn_w_m, btn_h_m)
-                        r_m.center = (SCREEN_WIDTH // 2 + x_offsets_m[ti], SCREEN_HEIGHT - 200)
+                        r_m.center = (SCREEN_WIDTH // 2 + x_offsets_m[ti], SCREEN_HEIGHT - 195)
                         if r_m.collidepoint(sx, sy):
                             diff_idx = ti
                             break
                     # PLAY button
-                    play_r_m = pygame.Rect(0, 0, 220, 64)
-                    play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
+                    play_r_m = pygame.Rect(0, 0, 290, 74)
+                    play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     if play_r_m.collidepoint(sx, sy):
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
                         state = GameState(
