@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 21   # 21 frames @ 60 FPS ≈ 2.9 cat steps/sec
+CAT_MOVE_DELAY_FRAMES = 30   # 30 frames @ 60 FPS ≈ 2.0 cat steps/sec
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -511,7 +511,7 @@ class GameState:
         if self._cat_at(nx, ny):
             if not self.respawn_flash:
                 self.mouse_pos = (nx, ny)
-                self._lose_life()
+                self._lose_life(cat_pos=(nx, ny))
             return True
 
         target = self.board[ny][nx]
@@ -571,7 +571,7 @@ class GameState:
             occupied.discard(cat)
             nx, ny = self._next_cat_position(cat, occupied)
             if (nx, ny) == self.mouse_pos and not self.respawn_flash and not life_lost:
-                self._lose_life()
+                self._lose_life(cat_pos=cat)
                 life_lost = True
             new_positions.append((nx, ny))
             occupied.add((nx, ny))
@@ -631,14 +631,15 @@ class GameState:
             return False
         return True
 
-    def _lose_life(self) -> None:
+    def _lose_life(self, cat_pos: tuple[int, int] | None = None) -> None:
         self.lives -= 1
         self.pending_sounds.append("death")
         if self.lives <= 0:
             self.game_over = True
         else:
             self.respawn_flash = 90
-            self.mouse_pos = self._find_free_cell(prefer_corner=True)
+            # Spawn mouse as far as possible from the cat that caught it
+            self.mouse_pos = self._find_free_cell(far_from=cat_pos)
 
     def _next_cat_position(self, cat: tuple[int, int], occupied: set[tuple[int, int]]) -> tuple[int, int]:
         """Aggressive cat movement: diagonal-capable beeline first, then 8-way BFS fallback."""
@@ -736,6 +737,7 @@ class GameState:
         prefer_corner: bool = False,
         min_distance_from: tuple[int, int] | None = None,
         min_distance: int = 0,
+        far_from: tuple[int, int] | None = None,
     ) -> tuple[int, int]:
         candidates: list[tuple[int, int]] = []
         for y in range(1, self.height - 1):
@@ -756,6 +758,15 @@ class GameState:
                     if self.board[y][x] == EMPTY:
                         return x, y
             return 1, 1
+
+        if far_from is not None:
+            # Pick from the farthest 25% of cells (Manhattan distance)
+            candidates.sort(
+                key=lambda p: abs(p[0] - far_from[0]) + abs(p[1] - far_from[1]),
+                reverse=True,
+            )
+            far_pool = candidates[: max(1, len(candidates) // 4)]
+            return random.choice(far_pool)
 
         if prefer_corner:
             candidates.sort(key=lambda p: p[0] + p[1])
@@ -1194,9 +1205,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus":  5, "cat_count_offset": -1},
+        "easy":   {"cat_delay_bonus":  8, "cat_count_offset": -1},
         "normal": {"cat_delay_bonus":  0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus": -3, "cat_count_offset":  1},
+        "hard":   {"cat_delay_bonus": -5, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
