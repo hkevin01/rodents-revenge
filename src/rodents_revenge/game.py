@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 42   # 42 frames @ 60 FPS ≈ 1.4 cat steps/sec
+CAT_MOVE_DELAY_FRAMES = 60   # 60 frames @ 60 FPS = 1.0 cat steps/sec
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -638,8 +638,15 @@ class GameState:
             self.game_over = True
         else:
             self.respawn_flash = 90
-            # Spawn mouse as far as possible from the cat that caught it
-            self.mouse_pos = self._find_free_cell(far_from=cat_pos)
+            # Spawn mouse at least 6 squares away from ALL cats.
+            # If no such cell exists, relax to 3, then 1, then any free cell.
+            for min_dist in (6, 3, 1, 0):
+                pos = self._find_safe_respawn(min_dist, far_from=cat_pos)
+                if pos is not None:
+                    self.mouse_pos = pos
+                    break
+            else:
+                self.mouse_pos = self._find_free_cell(far_from=cat_pos)
 
     def _next_cat_position(self, cat: tuple[int, int], occupied: set[tuple[int, int]]) -> tuple[int, int]:
         """Aggressive cat movement: diagonal-capable beeline first, then 8-way BFS fallback."""
@@ -731,6 +738,38 @@ class GameState:
             if self.board[y][x] == EMPTY:
                 self.board[y][x] = kind
                 placed += 1
+
+    def _find_safe_respawn(
+        self,
+        min_cat_dist: int,
+        far_from: tuple[int, int] | None = None,
+    ) -> tuple[int, int] | None:
+        """Return a free cell that is at least min_cat_dist from every cat.
+        Picks the farthest qualifying cell from far_from (or any qualifying
+        cell if far_from is None).  Returns None if no cell qualifies."""
+        candidates: list[tuple[int, int]] = []
+        for y in range(1, self.height - 1):
+            for x in range(1, self.width - 1):
+                if self.board[y][x] != EMPTY:
+                    continue
+                if (x, y) in self.cats:
+                    continue
+                if min_cat_dist > 0 and any(
+                    abs(x - cx) + abs(y - cy) < min_cat_dist
+                    for cx, cy in self.cats
+                ):
+                    continue
+                candidates.append((x, y))
+        if not candidates:
+            return None
+        if far_from is not None:
+            candidates.sort(
+                key=lambda p: abs(p[0] - far_from[0]) + abs(p[1] - far_from[1]),
+                reverse=True,
+            )
+            pool = candidates[: max(1, len(candidates) // 4)]
+            return random.choice(pool)
+        return random.choice(candidates)
 
     def _find_free_cell(
         self,
@@ -1205,9 +1244,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus": 10, "cat_count_offset": -1},
+        "easy":   {"cat_delay_bonus": 20, "cat_count_offset": -1},
         "normal": {"cat_delay_bonus":  0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus": -6, "cat_count_offset":  1},
+        "hard":   {"cat_delay_bonus": -8, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
