@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 14   # 14 frames @ 60 FPS ≈ 4.3 cat steps/sec — clearly independent of player input
+CAT_MOVE_DELAY_FRAMES = 21   # 21 frames @ 60 FPS ≈ 2.9 cat steps/sec
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
