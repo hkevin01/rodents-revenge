@@ -70,6 +70,22 @@ jobs:
           html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
           html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
 
+          # Cache-bust: force browsers to always fetch the latest build.
+          import time
+          bust = str(int(time.time()))
+          html = re.sub(
+              r'(archive\s*:\s*["\'])(\w+)(["\'])',
+              lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}',
+              html,
+          )
+          # Inject no-cache meta tags right after <head>
+          no_cache = (
+              '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n'
+              '<meta http-equiv="Pragma" content="no-cache">\n'
+              '<meta http-equiv="Expires" content="0">\n'
+          )
+          html = html.replace('<head>', '<head>\n' + no_cache, 1)
+
           # Replace template TODO warning with real resize behavior.
           html = html.replace(
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)\n    }',
@@ -78,6 +94,19 @@ jobs:
 
           index_path.write_text(html, encoding="utf-8")
           PY
+
+      - name: Add cache-busting headers file
+        run: |
+          cat > src/rodents_revenge/build/web/_headers <<'EOF'
+          /*
+            Cache-Control: no-cache, no-store, must-revalidate
+            Pragma: no-cache
+            Expires: 0
+          /*.apk
+            Cache-Control: no-cache, no-store, must-revalidate
+          /*.tar.gz
+            Cache-Control: no-cache, no-store, must-revalidate
+          EOF
 
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
