@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_MS = 1000  # milliseconds between cat steps (device-independent)
+CAT_MOVE_DELAY_MS = 2000  # milliseconds between cat steps (device-independent)
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
