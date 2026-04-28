@@ -26,10 +26,18 @@ jobs:
         run: pip install pygbag
 
       - name: Build WebAssembly bundle
-        # --build skips the local test server; output goes to build/web/
+        # Build from a versioned copy of the source folder so pygbag names
+        # ALL internal archive references with the git sha — no renaming needed.
+        # This ensures browsers can never serve a stale cached .tar.gz.
         run: |
-          python -m pygbag --build src/rodents_revenge
-          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          VERSIONED="rodents_revenge_${SHORT_SHA}"
+          cp -r src/rodents_revenge "/tmp/${VERSIONED}"
+          python -m pygbag --build "/tmp/${VERSIONED}"
+          # Move output back to expected location for subsequent steps
+          mkdir -p src/rodents_revenge/build
+          cp -r "/tmp/${VERSIONED}/build/web" src/rodents_revenge/build/web
 
       - name: Sanitize generated index.html for browser compatibility
         run: |
@@ -39,8 +47,6 @@ jobs:
 
           index_path = Path("src/rodents_revenge/build/web/index.html")
           html = index_path.read_text(encoding="utf-8")
-          web_dir = Path("src/rodents_revenge/build/web")
-          short_sha = os.environ.get("SHORT_SHA", "latest")
 
           # Remove deprecated/unsupported iframe permissions that trigger console warnings.
           html = html.replace("; monetization", "")
@@ -74,39 +80,15 @@ jobs:
           html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
           html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
 
-          # Cache-bust: rename archive to rodents_revenge_<sha> so browsers always fetch fresh.
-          new_archive = f"rodents_revenge_{short_sha}"
-          for ext in (".apk", ".tar.gz"):
-              src = web_dir / f"rodents_revenge{ext}"
-              dst = web_dir / f"{new_archive}{ext}"
-              if src.exists():
-                  src.rename(dst)
-          # Patch the config in index.html to reference the new archive name.
-          html = re.sub(
-              r'("archive"\s*:\s*")rodents_revenge(")',
-              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
-              html,
-          )
-          html = re.sub(
-              r"('archive'\s*:\s*')rodents_revenge(')",
-              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
-              html,
-          )
-          # Also patch the archive key inside the JS config object (unquoted key form).
-          html = re.sub(
-              r'(archive\s*:\s*["\'])rodents_revenge(["\'])',
-              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
-              html,
-          )
-
           # Replace template TODO warning with real resize behavior.
           html = html.replace(
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)\n    }',
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
           )
 
+          short_sha = os.environ.get("SHORT_SHA", "?")
+          print(f"Sanitized index.html for build {short_sha}")
           index_path.write_text(html, encoding="utf-8")
-          print(f"Archive renamed to: {new_archive}")
           PY
 
       - name: Deploy to gh-pages branch
