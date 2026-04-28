@@ -27,16 +27,20 @@ jobs:
 
       - name: Build WebAssembly bundle
         # --build skips the local test server; output goes to build/web/
-        run: python -m pygbag --build src/rodents_revenge
+        run: |
+          python -m pygbag --build src/rodents_revenge
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Sanitize generated index.html for browser compatibility
         run: |
           python - <<'PY'
+          import os, re
           from pathlib import Path
-          import re
 
           index_path = Path("src/rodents_revenge/build/web/index.html")
           html = index_path.read_text(encoding="utf-8")
+          web_dir = Path("src/rodents_revenge/build/web")
+          short_sha = os.environ.get("SHORT_SHA", "latest")
 
           # Remove deprecated/unsupported iframe permissions that trigger console warnings.
           html = html.replace("; monetization", "")
@@ -70,21 +74,30 @@ jobs:
           html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
           html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
 
-          # Cache-bust: force browsers to always fetch the latest build.
-          import time
-          bust = str(int(time.time()))
+          # Cache-bust: rename archive to rodents_revenge_<sha> so browsers always fetch fresh.
+          new_archive = f"rodents_revenge_{short_sha}"
+          for ext in (".apk", ".tar.gz"):
+              src = web_dir / f"rodents_revenge{ext}"
+              dst = web_dir / f"{new_archive}{ext}"
+              if src.exists():
+                  src.rename(dst)
+          # Patch the config in index.html to reference the new archive name.
           html = re.sub(
-              r'(archive\s*:\s*["\'])(\w+)(["\'])',
-              lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}',
+              r'("archive"\s*:\s*")rodents_revenge(")',
+              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
               html,
           )
-          # Inject no-cache meta tags right after <head>
-          no_cache = (
-              '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n'
-              '<meta http-equiv="Pragma" content="no-cache">\n'
-              '<meta http-equiv="Expires" content="0">\n'
+          html = re.sub(
+              r"('archive'\s*:\s*')rodents_revenge(')",
+              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
+              html,
           )
-          html = html.replace('<head>', '<head>\n' + no_cache, 1)
+          # Also patch the archive key inside the JS config object (unquoted key form).
+          html = re.sub(
+              r'(archive\s*:\s*["\'])rodents_revenge(["\'])',
+              lambda m: f'{m.group(1)}{new_archive}{m.group(2)}',
+              html,
+          )
 
           # Replace template TODO warning with real resize behavior.
           html = html.replace(
@@ -93,20 +106,8 @@ jobs:
           )
 
           index_path.write_text(html, encoding="utf-8")
+          print(f"Archive renamed to: {new_archive}")
           PY
-
-      - name: Add cache-busting headers file
-        run: |
-          cat > src/rodents_revenge/build/web/_headers <<'EOF'
-          /*
-            Cache-Control: no-cache, no-store, must-revalidate
-            Pragma: no-cache
-            Expires: 0
-          /*.apk
-            Cache-Control: no-cache, no-store, must-revalidate
-          /*.tar.gz
-            Cache-Control: no-cache, no-store, must-revalidate
-          EOF
 
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
