@@ -11,6 +11,14 @@ from pathlib import Path
 
 import pygame
 
+# On some pygbag runtimes, `import pygame` can resolve to a placeholder module.
+# Fall back to pygame-ce module name if needed.
+if not hasattr(pygame, "init"):
+    try:
+        import pygame_ce as pygame  # type: ignore[no-redef]
+    except Exception:
+        pass
+
 
 GRID_WIDTH = 20
 GRID_HEIGHT = 15

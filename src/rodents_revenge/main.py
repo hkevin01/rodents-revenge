@@ -1,4 +1,15 @@
+"""
+# /// script
+# dependencies = [
+#   "pygame-ce",
+# ]
+# ///
+"""
+
 import asyncio
+
+# Ensure pygbag resolves and preloads the pygame-ce runtime for web builds.
+import pygame  # noqa: F401
 
 # Support both: `python -m rodents_revenge.main` (desktop, PYTHONPATH=src)
 # and pygbag: `pygbag src/rodents_revenge`  (flat-package web build)

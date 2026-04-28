@@ -42,14 +42,21 @@ jobs:
           html = html.replace("; monetization", "")
           html = html.replace("; xr;", ";")
           html = html.replace("; xr-spatial-tracking", "")
+          html = re.sub(r"\s*xr-spatial-tracking;?", "", html)
 
           # Remove duplicate fullscreen attributes since allow=fullscreen already exists.
-            html = re.sub(
+          html = re.sub(
               r'^\s*(?:allowfullscreen|webkitallowfullscreen|msallowfullscreen|mozallowfullscreen)="true"\s*\n',
               "",
               html,
               flags=re.MULTILINE,
-            )
+          )
+
+          # Remove sandbox warning from about:blank iframe.
+          html = html.replace(
+              'sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"',
+              'sandbox="allow-top-navigation allow-scripts allow-pointer-lock"',
+          )
 
           # Avoid loading the remote empty iframe page (and its noisy policy headers).
           html = html.replace(
@@ -58,9 +65,16 @@ jobs:
           )
 
           # Reduce template debug noise in browser console.
-          html = html.replace('gui_debug : 2,', 'gui_debug : 0,')
+            html = re.sub(r'gui_debug\s*:\s*\d+,', 'gui_debug : 0,', html)
           html = html.replace('data-os="vtx,snd,gui"', 'data-os="snd,gui"')
           html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
+            html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
+
+            # Replace template TODO warning with real resize behavior.
+            html = html.replace(
+              '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)\n    }',
+              '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
+            )
 
           index_path.write_text(html, encoding="utf-8")
           PY
