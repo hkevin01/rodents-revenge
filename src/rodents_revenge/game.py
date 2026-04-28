@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_MS = 2000  # milliseconds between cat steps (device-independent)
+CAT_MOVE_DELAY_MS = 500  # milliseconds between cat steps (device-independent)
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -1244,9 +1244,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus":   500, "cat_count_offset": -1},
+        "easy":   {"cat_delay_bonus":   250, "cat_count_offset": -1},
         "normal": {"cat_delay_bonus":     0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus":  -250, "cat_count_offset":  1},
+        "hard":   {"cat_delay_bonus":  -125, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
@@ -1426,8 +1426,16 @@ async def run_game() -> None:
             # Body + head (covers tail base)
             pygame.draw.ellipse(screen, (235, 158, 65), cb_r)
             pygame.draw.circle(screen, (235, 158, 65), (ch_cx, ch_cy), ch_r)
+            # Stripes on body (3 dark arcs/lines across the body)
+            stripe_col = (185, 110, 30)
+            for si, sx_off in enumerate((-8, -1, 6)):
+                sx0 = body_cx + sx_off - 1
+                sx1 = body_cx + sx_off + 1
+                pygame.draw.line(screen, stripe_col,
+                                 (body_cx + sx_off, cb_r.top + 2),
+                                 (body_cx + sx_off, cb_r.bottom - 2), 2)
             # Ear: pointy triangle on top-BACK of head, drawn AFTER head
-            ear_bx = ch_cx - cat_fx * 5   # 5 px toward back from head center
+            ear_bx = ch_cx - cat_fx * 7   # 7 px toward back from head center
             ear_by = ch_cy - ch_r + 1      # near head top
             ear_tip = (ear_bx, ear_by - 10)
             ear_base_l = (ear_bx - 5, ear_by)
@@ -1458,8 +1466,6 @@ async def run_game() -> None:
         fx = 1 if mouse_facing >= 0 else -1
         bx = mouse_rect.centerx
         by = mouse_rect.centery + bob
-        # Shadow
-        pygame.draw.ellipse(screen, (18, 16, 12), pygame.Rect(bx - 14, by + 12, 28, 6))
         # Tail first (body overlaps its base)
         mt_x0 = bx - fx * 11
         mt_x1 = mt_x0 - fx * 8
@@ -2123,7 +2129,7 @@ async def run_game() -> None:
         if phase == "playing" and not state.paused and not show_help:
             if not state.game_over:
                 cat_ms_accum += dt_ms
-                cat_delay_ms = max(500, CAT_MOVE_DELAY_MS - (state.level - 1) * 200 + state.cat_delay_bonus)
+                cat_delay_ms = max(150, CAT_MOVE_DELAY_MS - (state.level - 1) * 20 + state.cat_delay_bonus)
                 if cat_ms_accum >= cat_delay_ms:
                     cat_ms_accum = 0
                     state.step_cats()
