@@ -1275,10 +1275,22 @@ async def run_game() -> None:
         text_color: tuple[int, int, int] = (220, 210, 170),
         active: bool = False,
     ) -> None:
-        """Draw a rounded touch-friendly button."""
-        bg_col = (100, 92, 68) if active else color
+        """Draw a polished rounded button with highlight edge and drop-shadow."""
+        bg_col = tuple(min(255, c + 30) for c in color) if active else color  # type: ignore[assignment]
+        # Drop-shadow
+        shadow_r = rect.move(2, 3)
+        shadow_surf = pygame.Surface((shadow_r.width, shadow_r.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, (0, 0, 0, 80), shadow_surf.get_rect(), border_radius=10)
+        surf.blit(shadow_surf, shadow_r.topleft)
+        # Button fill
         pygame.draw.rect(surf, bg_col, rect, border_radius=10)
-        pygame.draw.rect(surf, (140, 130, 95), rect, 2, border_radius=10)
+        # Inner top highlight (1-px lighter strip near top)
+        hi_r = pygame.Rect(rect.x + 4, rect.y + 2, rect.width - 8, rect.height // 2)
+        hi_surf = pygame.Surface((hi_r.width, hi_r.height), pygame.SRCALPHA)
+        pygame.draw.rect(hi_surf, (255, 255, 255, 28), hi_surf.get_rect(), border_radius=8)
+        surf.blit(hi_surf, hi_r.topleft)
+        # Outer border — bright top-left, dark bottom-right
+        pygame.draw.rect(surf, (180, 170, 130), rect, 2, border_radius=10)
         lbl = small_font.render(label, True, text_color)
         surf.blit(lbl, (rect.centerx - lbl.get_width() // 2, rect.centery - lbl.get_height() // 2))
 
@@ -1702,7 +1714,7 @@ async def run_game() -> None:
                 screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 192 + i * 28))
         # Difficulty selector — large touch-friendly buttons
         dlabel = small_font.render("DIFFICULTY", True, (160, 155, 130))
-        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 195))
+        screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 240))
         diff_colors = {"easy": (50, 120, 60), "normal": (60, 60, 100), "hard": (120, 40, 40)}
         diff_text_colors = {"easy": (140, 240, 160), "normal": (220, 216, 255), "hard": (255, 150, 140)}
         diff_rects: list[pygame.Rect] = []
@@ -1710,13 +1722,23 @@ async def run_game() -> None:
         x_offsets = [-160, 0, 160]
         for i, d in enumerate(DIFFICULTIES):
             r = pygame.Rect(0, 0, btn_w, btn_h)
-            r.center = (SCREEN_WIDTH // 2 + x_offsets[i], SCREEN_HEIGHT - 158)
+            r.center = (SCREEN_WIDTH // 2 + x_offsets[i], SCREEN_HEIGHT - 200)
             diff_rects.append(r)
             active = (i == diff_idx)
             base_col = diff_colors[d]
+            # Drop-shadow
+            shadow_r = r.move(2, 3)
+            pygame.draw.rect(screen, (0, 0, 0, 0), shadow_r, border_radius=10)  # placeholder; real shadow below
+            sh_s = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
+            pygame.draw.rect(sh_s, (0, 0, 0, 70), sh_s.get_rect(), border_radius=10)
+            screen.blit(sh_s, shadow_r.topleft)
             bright_col = tuple(min(255, c + 40) for c in base_col)
             col = bright_col if active else base_col  # type: ignore[assignment]
             pygame.draw.rect(screen, col, r, border_radius=10)
+            # Inner highlight
+            hi_s = pygame.Surface((r.width - 8, r.height // 2), pygame.SRCALPHA)
+            pygame.draw.rect(hi_s, (255, 255, 255, 30), hi_s.get_rect(), border_radius=8)
+            screen.blit(hi_s, (r.x + 4, r.y + 2))
             border_col = diff_text_colors[d] if active else (80, 75, 60)
             pygame.draw.rect(screen, border_col, r, 2, border_radius=10)
             lbl = small_font.render(d.upper(), True, diff_text_colors[d] if active else (110, 105, 80))
@@ -1724,12 +1746,30 @@ async def run_game() -> None:
 
         # Big PLAY button
         play_rect = pygame.Rect(0, 0, 220, 64)
-        play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 96)
-        play_col = (60, 130, 70) if (animation_frame // 30) % 2 == 0 else (45, 105, 55)
+        play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
+        pulse = (animation_frame // 30) % 2 == 0
+        play_col = (65, 140, 75) if pulse else (48, 112, 58)
+        # Shadow
+        sh_p = pygame.Surface((play_rect.width, play_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(sh_p, (0, 0, 0, 90), sh_p.get_rect(), border_radius=14)
+        screen.blit(sh_p, play_rect.move(3, 4).topleft)
         pygame.draw.rect(screen, play_col, play_rect, border_radius=14)
-        pygame.draw.rect(screen, (130, 220, 140), play_rect, 3, border_radius=14)
-        play_lbl = font.render("▶  PLAY", True, (200, 255, 210))
-        screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2, play_rect.centery - play_lbl.get_height() // 2))
+        # Inner top highlight
+        hi_p = pygame.Surface((play_rect.width - 8, play_rect.height // 2), pygame.SRCALPHA)
+        pygame.draw.rect(hi_p, (255, 255, 255, 40), hi_p.get_rect(), border_radius=10)
+        screen.blit(hi_p, (play_rect.x + 4, play_rect.y + 3))
+        pygame.draw.rect(screen, (130, 230, 150) if pulse else (100, 200, 120), play_rect, 3, border_radius=14)
+        play_lbl = font.render("PLAY", True, (200, 255, 210))
+        # Draw a filled triangle (play icon) to the left of the text
+        lbl_w = play_lbl.get_width() + 24
+        lbl_x = play_rect.centerx - lbl_w // 2
+        lbl_y = play_rect.centery - play_lbl.get_height() // 2
+        tri_cx = lbl_x + 8
+        tri_cy = play_rect.centery
+        pygame.draw.polygon(screen, (200, 255, 210), [
+            (tri_cx - 6, tri_cy - 8), (tri_cx + 8, tri_cy), (tri_cx - 6, tri_cy + 8)
+        ])
+        screen.blit(play_lbl, (lbl_x + 20, lbl_y))
 
         legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (100, 95, 75))
         legal2 = tiny_font.render("Unofficial fan remake using CC-BY licensed assets", True, (100, 95, 75))
@@ -1916,6 +1956,48 @@ async def run_game() -> None:
                     key_up_held = False
                 elif event.key in (pygame.K_DOWN, pygame.K_s):
                     key_down_held = False
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                sx, sy = event.pos
+                if phase == "title":
+                    # Difficulty buttons
+                    btn_w_m, btn_h_m = 130, 52
+                    x_offsets_m = [-160, 0, 160]
+                    for ti, _d in enumerate(DIFFICULTIES):
+                        r_m = pygame.Rect(0, 0, btn_w_m, btn_h_m)
+                        r_m.center = (SCREEN_WIDTH // 2 + x_offsets_m[ti], SCREEN_HEIGHT - 200)
+                        if r_m.collidepoint(sx, sy):
+                            diff_idx = ti
+                            break
+                    # PLAY button
+                    play_r_m = pygame.Rect(0, 0, 220, 64)
+                    play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
+                    if play_r_m.collidepoint(sx, sy):
+                        s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+                        state = GameState(
+                            cat_delay_bonus=s["cat_delay_bonus"],
+                            cat_count_offset=s["cat_count_offset"],
+                        )
+                        cat_frame_counter = 0
+                        block_tweens.clear()
+                        score_saved = False
+                        new_high_score = False
+                        phase = "playing"
+                elif phase == "playing":
+                    if _tbtn_pause_rect.collidepoint(sx, sy):
+                        if not state.game_over:
+                            state.paused = not state.paused
+                    elif _tbtn_help_rect.collidepoint(sx, sy):
+                        if not state.game_over and not state.paused:
+                            show_help = not show_help
+                    elif state.game_over:
+                        if _tbtn_menu_rect.collidepoint(sx, sy):
+                            phase = "title"
+                            scores = load_scores()
+                        elif _tbtn_restart_rect.collidepoint(sx, sy):
+                            state.restart_game()
+                            block_tweens.clear()
+                            score_saved = False
 
         # ---- keyboard auto-repeat for held arrows/WASD ---------------------
         if phase == "playing" and not state.paused and not show_help and not state.game_over:
