@@ -525,6 +525,9 @@ class GameState:
             else:
                 self.pending_sounds.append("move")
             self.score += MOUSE_STEP_SCORE
+            # Resolve newly-cornered cats immediately after the player's move.
+            if self.cats:
+                self._resolve_trapped_cats()
             return True
 
         if target == BLOCK:
@@ -549,6 +552,9 @@ class GameState:
             self.score += MOUSE_STEP_SCORE
             self.pending_sounds.append("move")
             self.last_block_push = (nx, ny, nx + dx, ny + dy)
+            # Pushing blocks can trap cats right away.
+            if self.cats:
+                self._resolve_trapped_cats()
             return True
 
         return False
@@ -612,11 +618,11 @@ class GameState:
             # a diagonal step is only valid when both adjacent orthogonal cells
             # are free (not WALL or BLOCK).
             if dx != 0 and dy != 0:
-                if self.board[y][nx] in (BLOCK, WALL):
+                if self.board[y][nx] in (BLOCK, WALL, CHEESE):
                     continue
-                if self.board[ny][x] in (BLOCK, WALL):
+                if self.board[ny][x] in (BLOCK, WALL, CHEESE):
                     continue
-            if self.board[ny][nx] in (BLOCK, WALL):
+            if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
                 continue
             if (nx, ny) == self.mouse_pos:
                 return False
@@ -649,13 +655,13 @@ class GameState:
         def can_step(cx: int, cy: int, nx: int, ny: int) -> bool:
             if not self.in_bounds(nx, ny):
                 return False
-            if self.board[ny][nx] in (BLOCK, WALL):
+            if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
                 return False
             # No corner-cutting: diagonal movement requires both edge-adjacent cells open.
             if nx != cx and ny != cy:
-                if self.board[cy][nx] in (BLOCK, WALL):
+                if self.board[cy][nx] in (BLOCK, WALL, CHEESE):
                     return False
-                if self.board[ny][cx] in (BLOCK, WALL):
+                if self.board[ny][cx] in (BLOCK, WALL, CHEESE):
                     return False
             if (nx, ny) in occupied and (nx, ny) != goal:
                 return False
@@ -1229,6 +1235,10 @@ async def run_game() -> None:
     vjoy_held_frames = 0
     key_last_dir = (0, 0)
     key_held_frames = 0
+    key_left_held = False
+    key_right_held = False
+    key_up_held = False
+    key_down_held = False
 
     # Touch buttons (Pause, Help) rendered in HUD — rects set in draw_board
     _tbtn_pause_rect = pygame.Rect(0, 0, TBTN_W, TBTN_H)
@@ -1877,6 +1887,14 @@ async def run_game() -> None:
                     elif event.key in (pygame.K_RIGHT, pygame.K_d):
                         diff_idx = (diff_idx + 1) % len(DIFFICULTIES)
                 elif phase == "playing":
+                    if event.key in (pygame.K_LEFT, pygame.K_a):
+                        key_left_held = True
+                    elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                        key_right_held = True
+                    elif event.key in (pygame.K_UP, pygame.K_w):
+                        key_up_held = True
+                    elif event.key in (pygame.K_DOWN, pygame.K_s):
+                        key_down_held = True
                     if state.game_over:
                         if event.key == pygame.K_RETURN:
                             phase = "title"
@@ -1914,13 +1932,24 @@ async def run_game() -> None:
                         elif event.key in (pygame.K_DOWN, pygame.K_s):
                             player_moved = state.handle_player_move(0, 1)
 
+            elif event.type == pygame.KEYUP and phase == "playing":
+                if event.key in (pygame.K_LEFT, pygame.K_a):
+                    key_left_held = False
+                elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                    key_right_held = False
+                elif event.key in (pygame.K_UP, pygame.K_w):
+                    key_up_held = False
+                elif event.key in (pygame.K_DOWN, pygame.K_s):
+                    key_down_held = False
+
         # ---- keyboard auto-repeat for held arrows/WASD ---------------------
         if phase == "playing" and not state.paused and not show_help and not state.game_over:
+            # Event-driven held-key tracking is primary; polling is a fallback.
             keys = pygame.key.get_pressed()
-            k_left = keys[pygame.K_LEFT] or keys[pygame.K_a]
-            k_right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
-            k_up = keys[pygame.K_UP] or keys[pygame.K_w]
-            k_down = keys[pygame.K_DOWN] or keys[pygame.K_s]
+            k_left = key_left_held or keys[pygame.K_LEFT] or keys[pygame.K_a]
+            k_right = key_right_held or keys[pygame.K_RIGHT] or keys[pygame.K_d]
+            k_up = key_up_held or keys[pygame.K_UP] or keys[pygame.K_w]
+            k_down = key_down_held or keys[pygame.K_DOWN] or keys[pygame.K_s]
 
             d = (0, 0)
             if k_left and not k_right:

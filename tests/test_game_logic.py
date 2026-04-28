@@ -206,6 +206,36 @@ def test_cat_moves_diagonally_toward_mouse() -> None:
     assert state.cats[0] == (4, 4)
 
 
+def test_cats_do_not_step_onto_cheese() -> None:
+    state = blank_state()
+    state.mouse_pos = (6, 3)
+    state.cats = [(3, 3)]
+    state.board[3][4] = CHEESE  # direct beeline cell is blocked for cats
+
+    state.step_cats()
+
+    assert state.cats[0] != (4, 3)
+
+
+def test_trapped_cat_resolves_immediately_after_player_move() -> None:
+    state = blank_state()
+    state.mouse_pos = (2, 3)
+    state.cats = [(5, 3)]
+    # Pre-place 3 sides of a trap around the cat.
+    state.board[2][5] = BLOCK
+    state.board[4][5] = BLOCK
+    state.board[3][6] = BLOCK
+    # Push this block from (3,3) into (4,3) to close the final side.
+    state.board[3][3] = BLOCK
+    state.board[3][4] = EMPTY
+
+    moved = state.handle_player_move(1, 0)
+
+    assert moved is True
+    assert state.board[3][5] == CHEESE
+    assert (5, 3) not in state.cats
+
+
 def test_cat_beelines_into_near_trap_space() -> None:
     state = blank_state()
     state.mouse_pos = (6, 6)
