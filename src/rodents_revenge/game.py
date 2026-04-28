@@ -1391,6 +1391,30 @@ async def run_game() -> None:
             rx = mouse_rect.centerx + TILE_SIZE // 8
             pygame.draw.circle(screen, (255, 170, 185), (lx, blush_y), 2)
             pygame.draw.circle(screen, (255, 170, 185), (rx, blush_y), 2)
+
+            # Add a crisp mouse silhouette overlay so the character never reads as a plain circle.
+            face_y = mouse_rect.centery - TILE_SIZE // 8 + bob
+            ear_sz = max(4, TILE_SIZE // 7)
+            ear_l = pygame.Rect(mouse_rect.centerx - TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
+            ear_r = pygame.Rect(mouse_rect.centerx + TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
+            pygame.draw.ellipse(screen, (218, 240, 168), ear_l)
+            pygame.draw.ellipse(screen, (218, 240, 168), ear_r)
+            pygame.draw.circle(screen, (255, 185, 195), ear_l.center, max(1, ear_sz // 4))
+            pygame.draw.circle(screen, (255, 185, 195), ear_r.center, max(1, ear_sz // 4))
+
+            nose = (mouse_rect.centerx, face_y + TILE_SIZE // 6)
+            pygame.draw.circle(screen, (255, 158, 172), nose, max(1, TILE_SIZE // 18))
+            whisk = max(6, TILE_SIZE // 5)
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1]), (nose[0] - whisk, nose[1] - 2), 1)
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1]), (nose[0] + whisk, nose[1] - 2), 1)
+
+            tail_dir = -1 if mouse_facing > 0 else 1
+            tail_start = (mouse_rect.centerx - TILE_SIZE // 3 if mouse_facing > 0 else mouse_rect.centerx + TILE_SIZE // 3,
+                          mouse_rect.centery + TILE_SIZE // 7 + bob)
+            tail_mid = (tail_start[0] + tail_dir * (TILE_SIZE // 4), tail_start[1] + TILE_SIZE // 10)
+            tail_end = (tail_mid[0] + tail_dir * (TILE_SIZE // 4), tail_mid[1] - TILE_SIZE // 12)
+            pygame.draw.line(screen, (175, 205, 132), tail_start, tail_mid, 3)
+            pygame.draw.line(screen, (165, 196, 124), tail_mid, tail_end, 2)
         else:
             # Fallback mouse model (when sprite sheet is unavailable)
             shadow = mouse_rect.inflate(-14, -24)
