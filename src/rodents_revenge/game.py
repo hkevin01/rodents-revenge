@@ -50,6 +50,10 @@ VJOY_INITIAL_DELAY = 10   # frames before auto-repeat kicks in
 VJOY_REPEAT_EVERY = 5     # frames between repeated moves while held
 VJOY_FLOAT = True         # joystick floats to first-touch position
 
+# Keyboard hold repeat (matches virtual joystick feel)
+KEY_INITIAL_DELAY = 10
+KEY_REPEAT_EVERY = 5
+
 # Touch button layout (bottom-right HUD strip)
 TBTN_W = 90   # touch button width
 TBTN_H = 50   # touch button height
@@ -214,6 +218,109 @@ class SpritePack:
     cat_frames: list[pygame.Surface] = field(default_factory=list)
 
 
+def _make_mouse_fallback_frames(sprite_size: int) -> list[pygame.Surface]:
+    """Build simple sprite-like animated mouse frames for no-asset environments."""
+    frames: list[pygame.Surface] = []
+    w = max(16, sprite_size)
+    h = w
+    for i in range(4):
+        s = pygame.Surface((w, h), pygame.SRCALPHA)
+        bob = -1 if i % 2 == 0 else 0
+        body = pygame.Rect(w // 4, h // 3 + bob, w // 2, h // 2)
+        head = pygame.Rect(w // 3, h // 5 + bob, w // 3, h // 3)
+
+        # Body + head
+        pygame.draw.ellipse(s, (201, 230, 150), body)
+        pygame.draw.ellipse(s, (211, 238, 160), head)
+
+        # Ears
+        ear_l = pygame.Rect(head.x + 1, head.y - 2, w // 7, h // 7)
+        ear_r = pygame.Rect(head.right - w // 7 - 1, head.y - 2, w // 7, h // 7)
+        pygame.draw.ellipse(s, (220, 245, 172), ear_l)
+        pygame.draw.ellipse(s, (220, 245, 172), ear_r)
+        pygame.draw.circle(s, (255, 185, 195), ear_l.center, max(1, w // 20))
+        pygame.draw.circle(s, (255, 185, 195), ear_r.center, max(1, w // 20))
+
+        # Face
+        ey = head.y + head.height // 2
+        lx = head.centerx - max(2, w // 10)
+        rx = head.centerx + max(2, w // 10)
+        pygame.draw.circle(s, (40, 55, 24), (lx, ey), max(1, w // 26))
+        pygame.draw.circle(s, (40, 55, 24), (rx, ey), max(1, w // 26))
+        nose = (head.centerx, ey + max(2, h // 10))
+        pygame.draw.circle(s, (255, 160, 172), nose, max(1, w // 22))
+
+        # Whiskers
+        whisk = max(3, w // 7)
+        pygame.draw.line(s, (190, 208, 150), (nose[0] - 1, nose[1]), (nose[0] - whisk, nose[1] - 1), 1)
+        pygame.draw.line(s, (190, 208, 150), (nose[0] + 1, nose[1]), (nose[0] + whisk, nose[1] - 1), 1)
+
+        # Tail sway + feet
+        tail_anchor = (body.x + 2, body.centery)
+        sway = -2 if i in (0, 3) else 2
+        pygame.draw.line(s, (170, 196, 124), tail_anchor, (tail_anchor[0] - w // 5, tail_anchor[1] + sway), 2)
+        paw_y = body.bottom - 1
+        paw_shift = -1 if i % 2 == 0 else 1
+        pygame.draw.circle(s, (206, 233, 154), (body.centerx - w // 8 + paw_shift, paw_y), max(1, w // 20))
+        pygame.draw.circle(s, (206, 233, 154), (body.centerx + w // 8 - paw_shift, paw_y), max(1, w // 20))
+
+        frames.append(s)
+    return frames
+
+
+def _make_cat_fallback_frames(sprite_size: int) -> list[pygame.Surface]:
+    """Build simple sprite-like animated cat frames for no-asset environments."""
+    frames: list[pygame.Surface] = []
+    w = max(16, sprite_size)
+    h = w
+    for i in range(6):
+        s = pygame.Surface((w, h), pygame.SRCALPHA)
+        bob = -1 if i % 2 == 0 else 0
+        body = pygame.Rect(w // 4, h // 3 + bob, w // 2, h // 2)
+        head = pygame.Rect(w // 3, h // 5 + bob, w // 3, h // 3)
+
+        # Body + head
+        pygame.draw.ellipse(s, (255, 130, 0), body)
+        pygame.draw.ellipse(s, (255, 142, 20), head)
+
+        # Ears
+        ear_l = [(head.x + 2, head.y + 3), (head.x + w // 10, head.y - h // 10), (head.x + w // 6, head.y + 4)]
+        ear_r = [(head.right - 2, head.y + 3), (head.right - w // 10, head.y - h // 10), (head.right - w // 6, head.y + 4)]
+        pygame.draw.polygon(s, (255, 138, 8), ear_l)
+        pygame.draw.polygon(s, (255, 138, 8), ear_r)
+        pygame.draw.polygon(s, (255, 185, 170), [(head.x + 5, head.y + 2), (head.x + 7, head.y - 2), (head.x + 9, head.y + 3)])
+        pygame.draw.polygon(s, (255, 185, 170), [(head.right - 5, head.y + 2), (head.right - 7, head.y - 2), (head.right - 9, head.y + 3)])
+
+        # Face/blink
+        ey = head.y + head.height // 2
+        blink = i == 2
+        lx = head.centerx - max(2, w // 10)
+        rx = head.centerx + max(2, w // 10)
+        if blink:
+            pygame.draw.line(s, (60, 35, 20), (lx - 1, ey), (lx + 1, ey), 1)
+            pygame.draw.line(s, (60, 35, 20), (rx - 1, ey), (rx + 1, ey), 1)
+        else:
+            pygame.draw.circle(s, (40, 26, 18), (lx, ey), max(1, w // 26))
+            pygame.draw.circle(s, (40, 26, 18), (rx, ey), max(1, w // 26))
+        nose = (head.centerx, ey + max(2, h // 10))
+        pygame.draw.circle(s, (255, 160, 150), nose, max(1, w // 22))
+
+        # Tail sway + paws
+        sway = (-3, -1, 2, 3, 1, -2)[i]
+        t0 = (body.right - 1, body.centery)
+        t1 = (t0[0] + w // 7, t0[1] + sway)
+        t2 = (t1[0] + w // 9, t1[1] - sway // 2)
+        pygame.draw.line(s, (238, 120, 20), t0, t1, 3)
+        pygame.draw.line(s, (228, 110, 18), t1, t2, 2)
+        paw_y = body.bottom - 1
+        step = -1 if i % 2 == 0 else 1
+        pygame.draw.circle(s, (255, 145, 35), (body.centerx - w // 8 + step, paw_y), max(1, w // 20))
+        pygame.draw.circle(s, (255, 145, 35), (body.centerx + w // 8 - step, paw_y), max(1, w // 20))
+
+        frames.append(s)
+    return frames
+
+
 def _load_strip_frames(
     image_path: Path,
     target_size: int,
@@ -260,6 +367,12 @@ def _load_sprite_pack(tile_size: int) -> SpritePack:
         mouse_frames = _load_strip_frames(raw_dir / "rat" / "rat_0_walk.png", sprite_size, max_frames=4)
     if not cat_frames:
         cat_frames = _load_strip_frames(raw_dir / "cat_0" / "cat_0_walk.png", sprite_size, max_frames=8)
+
+    # Hard fallback: generate sprite-like animation frames in code.
+    if not mouse_frames:
+        mouse_frames = _make_mouse_fallback_frames(sprite_size)
+    if not cat_frames:
+        cat_frames = _make_cat_fallback_frames(sprite_size)
 
     return SpritePack(mouse_frames=mouse_frames, cat_frames=cat_frames)
 
@@ -1114,6 +1227,8 @@ async def run_game() -> None:
     vjoy_offset = (0.0, 0.0)   # thumb displacement from center
     vjoy_last_dir = (0, 0)
     vjoy_held_frames = 0
+    key_last_dir = (0, 0)
+    key_held_frames = 0
 
     # Touch buttons (Pause, Help) rendered in HUD — rects set in draw_board
     _tbtn_pause_rect = pygame.Rect(0, 0, TBTN_W, TBTN_H)
@@ -1227,7 +1342,33 @@ async def run_game() -> None:
                     ),
                 )
             else:
-                pygame.draw.ellipse(screen, colors["cat"], rect.inflate(-6, -8))
+                # Fallback cat model (when sprite sheet is unavailable)
+                body = rect.inflate(-10, -12)
+                body.y += int(math.sin(animation_frame / 9.0) * 1)
+                pygame.draw.ellipse(screen, (255, 132, 28), body)
+                # Ears
+                ear_l = [(body.x + 6, body.y + 2), (body.x + 12, body.y - 7), (body.x + 18, body.y + 4)]
+                ear_r = [(body.right - 6, body.y + 2), (body.right - 12, body.y - 7), (body.right - 18, body.y + 4)]
+                pygame.draw.polygon(screen, (255, 132, 28), ear_l)
+                pygame.draw.polygon(screen, (255, 132, 28), ear_r)
+                pygame.draw.polygon(screen, (255, 185, 170), [(body.x + 10, body.y + 1), (body.x + 12, body.y - 4), (body.x + 14, body.y + 2)])
+                pygame.draw.polygon(screen, (255, 185, 170), [(body.right - 10, body.y + 1), (body.right - 12, body.y - 4), (body.right - 14, body.y + 2)])
+                # Face
+                eye_y = body.y + body.height // 2 - 4
+                pygame.draw.circle(screen, (40, 26, 18), (body.centerx - 7, eye_y), 2)
+                pygame.draw.circle(screen, (40, 26, 18), (body.centerx + 7, eye_y), 2)
+                nose = (body.centerx, eye_y + 7)
+                pygame.draw.circle(screen, (255, 160, 150), nose, 2)
+                pygame.draw.line(screen, (70, 45, 30), (nose[0] - 2, nose[1] + 3), (nose[0] - 6, nose[1] + 7), 1)
+                pygame.draw.line(screen, (70, 45, 30), (nose[0] + 2, nose[1] + 3), (nose[0] + 6, nose[1] + 7), 1)
+                # Tail + paws
+                tail_start = (body.right - 1, body.centery + 2)
+                tail_mid = (tail_start[0] + 7, tail_start[1] + 1)
+                tail_end = (tail_mid[0] + 7, tail_mid[1] - 4)
+                pygame.draw.line(screen, (240, 120, 24), tail_start, tail_mid, 3)
+                pygame.draw.line(screen, (230, 110, 22), tail_mid, tail_end, 3)
+                pygame.draw.circle(screen, (255, 144, 35), (body.centerx - 9, body.bottom - 1), 3)
+                pygame.draw.circle(screen, (255, 144, 35), (body.centerx + 9, body.bottom - 1), 3)
 
         mx, my = state.mouse_pos
         mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
@@ -1251,6 +1392,11 @@ async def run_game() -> None:
             pygame.draw.circle(screen, (255, 170, 185), (lx, blush_y), 2)
             pygame.draw.circle(screen, (255, 170, 185), (rx, blush_y), 2)
         else:
+            # Fallback mouse model (when sprite sheet is unavailable)
+            shadow = mouse_rect.inflate(-14, -24)
+            shadow.y += TILE_SIZE // 2 + 6
+            pygame.draw.ellipse(screen, (20, 18, 14), shadow)
+
             body = mouse_rect.inflate(-10, -10)
             body.y += bob
             pygame.draw.ellipse(screen, (205, 232, 150), body)
@@ -1260,6 +1406,23 @@ async def run_game() -> None:
             pygame.draw.ellipse(screen, (218, 240, 168), ear_r)
             pygame.draw.circle(screen, (255, 185, 195), ear_l.center, 2)
             pygame.draw.circle(screen, (255, 185, 195), ear_r.center, 2)
+            eye_y = body.y + body.height // 2 - 3
+            pygame.draw.circle(screen, (40, 55, 24), (body.centerx - 6, eye_y), 2)
+            pygame.draw.circle(screen, (40, 55, 24), (body.centerx + 6, eye_y), 2)
+            nose = (body.centerx, eye_y + 6)
+            pygame.draw.circle(screen, (255, 158, 172), nose, 2)
+            # Whiskers
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1]), (nose[0] - 10, nose[1] - 2), 1)
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] - 2, nose[1] + 1), (nose[0] - 10, nose[1] + 3), 1)
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1]), (nose[0] + 10, nose[1] - 2), 1)
+            pygame.draw.line(screen, (190, 208, 150), (nose[0] + 2, nose[1] + 1), (nose[0] + 10, nose[1] + 3), 1)
+            # Tail reacts to facing direction
+            tail_dir = -1 if mouse_facing > 0 else 1
+            tail_start = (body.x + 2, body.centery + 1) if mouse_facing > 0 else (body.right - 2, body.centery + 1)
+            tail_mid = (tail_start[0] + 8 * tail_dir, tail_start[1] + 3)
+            tail_end = (tail_mid[0] + 8 * tail_dir, tail_mid[1] - 2)
+            pygame.draw.line(screen, (175, 205, 132), tail_start, tail_mid, 3)
+            pygame.draw.line(screen, (165, 196, 124), tail_mid, tail_end, 2)
             pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width // 3, body.y + body.height * 2 // 3), 2)
             pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width * 2 // 3, body.y + body.height * 2 // 3), 2)
 
@@ -1281,8 +1444,11 @@ async def run_game() -> None:
         room_surf = small_font.render(_theme["name"], True, (200, 188, 148))
         screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
         # HUD touch buttons — Pause and Help, right side
-        _tbtn_pause_rect.topleft = (SCREEN_WIDTH - TBTN_W * 2 - 12, HUD_HEIGHT // 2 - TBTN_H // 2)
-        _tbtn_help_rect.topleft  = (SCREEN_WIDTH - TBTN_W - 6,      HUD_HEIGHT // 2 - TBTN_H // 2)
+        lives_reserved = 30 + max(0, state.lives) * 22
+        help_x = SCREEN_WIDTH - lives_reserved - TBTN_W
+        pause_x = help_x - TBTN_W - 10
+        _tbtn_pause_rect.topleft = (pause_x, HUD_HEIGHT // 2 - TBTN_H // 2)
+        _tbtn_help_rect.topleft  = (help_x,  HUD_HEIGHT // 2 - TBTN_H // 2)
         _draw_touch_btn(screen, _tbtn_pause_rect, "⏸ PAUSE", active=state.paused)
         _draw_touch_btn(screen, _tbtn_help_rect,  "? HELP",  active=show_help)
 
@@ -1723,6 +1889,43 @@ async def run_game() -> None:
                             player_moved = state.handle_player_move(0, -1)
                         elif event.key in (pygame.K_DOWN, pygame.K_s):
                             player_moved = state.handle_player_move(0, 1)
+
+        # ---- keyboard auto-repeat for held arrows/WASD ---------------------
+        if phase == "playing" and not state.paused and not show_help and not state.game_over:
+            keys = pygame.key.get_pressed()
+            k_left = keys[pygame.K_LEFT] or keys[pygame.K_a]
+            k_right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+            k_up = keys[pygame.K_UP] or keys[pygame.K_w]
+            k_down = keys[pygame.K_DOWN] or keys[pygame.K_s]
+
+            d = (0, 0)
+            if k_left and not k_right:
+                d = (-1, 0)
+            elif k_right and not k_left:
+                d = (1, 0)
+            elif k_up and not k_down:
+                d = (0, -1)
+            elif k_down and not k_up:
+                d = (0, 1)
+
+            if d != (0, 0):
+                if d != key_last_dir:
+                    key_last_dir = d
+                    key_held_frames = 0
+                else:
+                    key_held_frames += 1
+                    if key_held_frames == KEY_INITIAL_DELAY or (
+                        key_held_frames > KEY_INITIAL_DELAY
+                        and (key_held_frames - KEY_INITIAL_DELAY) % KEY_REPEAT_EVERY == 0
+                    ):
+                        moved = state.handle_player_move(d[0], d[1])
+                        if moved:
+                            player_moved = True
+                            if d[0] != 0:
+                                mouse_facing = d[0]
+            else:
+                key_last_dir = (0, 0)
+                key_held_frames = 0
 
         # ---- virtual joystick auto-repeat (runs every frame while held) -----
         if vjoy_active and phase == "playing":
