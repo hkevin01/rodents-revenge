@@ -1793,13 +1793,13 @@ async def run_game() -> None:
                     x_offsets2 = [-160, 0, 160]
                     for ti, _d in enumerate(DIFFICULTIES):
                         r2 = pygame.Rect(0, 0, btn_w2, btn_h2)
-                        r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 158)
+                        r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 200)
                         if r2.collidepoint(sx, sy):
                             diff_idx = ti
                             break
                     # PLAY button
                     play_r = pygame.Rect(0, 0, 220, 64)
-                    play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 96)
+                    play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 130)
                     if play_r.collidepoint(sx, sy):
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
                         state = GameState(
