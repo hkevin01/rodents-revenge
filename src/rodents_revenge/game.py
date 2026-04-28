@@ -917,12 +917,64 @@ def _draw_block_tile(
     face: tuple[int, int, int] = (210, 185, 140),
     edge: tuple[int, int, int] = (145, 115, 75),
 ) -> None:
-    inner = rect.inflate(-4, -4)
-    pygame.draw.rect(surface, face, inner, border_radius=3)
-    pygame.draw.rect(surface, edge, inner, 2, border_radius=3)
-    cross = inner.inflate(-6, -6)
-    pygame.draw.line(surface, edge, cross.topleft, cross.bottomright, 1)
-    pygame.draw.line(surface, edge, cross.topright, cross.bottomleft, 1)
+    """Draw a detailed cardboard box tile with top flaps, tape, and small lettering."""
+    ts = rect.width
+    x, y = rect.x, rect.y
+
+    # Cardboard colour variants from the theme face colour, shifted toward a
+    # distinctly darker brown palette.
+    r, g, b = face
+    base = (
+        max(0, min(255, 96 + (r - 170) // 7)),
+        max(0, min(255, 67 + (g - 130) // 9)),
+        max(0, min(255, 40 + (b - 95) // 12)),
+    )
+    dark = (max(0, base[0] - 28), max(0, base[1] - 20), max(0, base[2] - 14))
+    light = (min(255, base[0] + 14), min(255, base[1] + 10), min(255, base[2] + 7))
+    crease = (max(0, base[0] - 12), max(0, base[1] - 9), max(0, base[2] - 7))
+    tape = (min(255, base[0] + 7), min(255, base[1] + 6), min(255, base[2] + 4))
+
+    pad = 2
+
+    # --- Main box body (slightly inset) ---
+    body = pygame.Rect(x + pad, y + pad, ts - pad * 2, ts - pad * 2)
+    pygame.draw.rect(surface, base, body)
+
+    # --- Right shadow strip (3D depth illusion) ---
+    shadow_w = max(3, ts // 7)
+    shadow = pygame.Rect(body.right - shadow_w, body.y, shadow_w, body.height)
+    pygame.draw.rect(surface, dark, shadow)
+
+    # --- Top flap area ---
+    flap_h = max(5, ts // 5)
+    flap_top = body.y + 3
+    flap = pygame.Rect(body.x + 1, flap_top, body.width - shadow_w - 2, flap_h)
+    pygame.draw.rect(surface, light, flap)
+
+    flap_y = flap.bottom
+    mid_x = body.centerx
+    pygame.draw.line(surface, edge, (body.x, flap_y), (body.right - 1, flap_y), 1)
+    pygame.draw.line(surface, crease, (mid_x, flap.y + 1), (mid_x, flap_y - 1), 1)
+
+    # --- Tape strip across the middle of the flap (horizontal) ---
+    tape_y = flap.y + flap_h // 2 - 1
+    tape_w = max(8, flap.width - 8)
+    pygame.draw.rect(surface, tape, (flap.x + 3, tape_y, tape_w, 2))
+
+    # --- Vertical centre seam on box body (below flap) ---
+    pygame.draw.line(surface, crease, (mid_x, flap_y + 2), (mid_x, body.bottom - 2), 1)
+
+    # --- Small printed letters "BOX" along the lower body ---
+    if ts >= 24:
+        # Two tiny pixel-art dots suggesting printed text lines
+        txt_y = flap_y + (body.bottom - flap_y) // 2 - 2
+        for i in range(3):
+            dot_x = body.x + 4 + i * (ts // 10 + 2)
+            pygame.draw.rect(surface, crease, (dot_x, txt_y, max(2, ts // 12), 1))
+            pygame.draw.rect(surface, crease, (dot_x, txt_y + 3, max(2, ts // 14), 1))
+
+    # --- Outer border ---
+    pygame.draw.rect(surface, edge, body, 1)
 
 
 def _draw_cheese_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
