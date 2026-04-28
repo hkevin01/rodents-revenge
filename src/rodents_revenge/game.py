@@ -1342,123 +1342,98 @@ async def run_game() -> None:
                 pygame.draw.ellipse(glow_surf, (255, 140, 0, alpha),
                                     glow_surf.get_rect().inflate(-4, -4))
                 screen.blit(glow_surf, rect.topleft)
-            if sprites.cat_frames:
-                frame = sprites.cat_frames[(animation_frame // 10) % len(sprites.cat_frames)]
-                screen.blit(
-                    frame,
-                    (
-                        rect.centerx - frame.get_width() // 2,
-                        rect.centery - frame.get_height() // 2,
-                    ),
-                )
-            else:
-                # Fallback cat model (when sprite sheet is unavailable)
-                body = rect.inflate(-10, -12)
-                body.y += int(math.sin(animation_frame / 9.0) * 1)
-                # Draw ears FIRST so body overlaps the base, leaving tips visible
-                ear_l = [(body.x + 4, body.y + 3), (body.x + 11, body.y - 9), (body.x + 19, body.y + 3)]
-                ear_r = [(body.right - 4, body.y + 3), (body.right - 11, body.y - 9), (body.right - 19, body.y + 3)]
-                pygame.draw.polygon(screen, (200, 105, 25), ear_l)
-                pygame.draw.polygon(screen, (200, 105, 25), ear_r)
-                pygame.draw.ellipse(screen, (235, 158, 65), body)
-                pygame.draw.polygon(screen, (255, 185, 170), [(body.x + 7, body.y + 2), (body.x + 11, body.y - 5), (body.x + 15, body.y + 2)])
-                pygame.draw.polygon(screen, (255, 185, 170), [(body.right - 7, body.y + 2), (body.right - 11, body.y - 5), (body.right - 15, body.y + 2)])
-                # Face
-                eye_y = body.y + body.height // 2 - 4
-                pygame.draw.circle(screen, (40, 26, 18), (body.centerx - 7, eye_y), 2)
-                pygame.draw.circle(screen, (40, 26, 18), (body.centerx + 7, eye_y), 2)
-                nose = (body.centerx, eye_y + 7)
-                pygame.draw.circle(screen, (255, 160, 150), nose, 2)
-                pygame.draw.line(screen, (70, 45, 30), (nose[0] - 2, nose[1] + 3), (nose[0] - 6, nose[1] + 7), 1)
-                pygame.draw.line(screen, (70, 45, 30), (nose[0] + 2, nose[1] + 3), (nose[0] + 6, nose[1] + 7), 1)
-                # Tail + paws
-                tail_start = (body.right - 1, body.centery + 2)
-                tail_mid = (tail_start[0] + 7, tail_start[1] + 1)
-                tail_end = (tail_mid[0] + 7, tail_mid[1] - 4)
-                pygame.draw.line(screen, (240, 120, 24), tail_start, tail_mid, 3)
-                pygame.draw.line(screen, (230, 110, 22), tail_mid, tail_end, 3)
-                pygame.draw.circle(screen, (255, 144, 35), (body.centerx - 9, body.bottom - 1), 3)
-                pygame.draw.circle(screen, (255, 144, 35), (body.centerx + 9, body.bottom - 1), 3)
+            # Side-profile cat, always faces toward the player
+            cat_fx = 1 if cx <= mx else -1
+            cbx = rect.centerx
+            cby = rect.centery + int(math.sin(animation_frame / 9.0) * 1)
+            cbw, cbh = 26, 14
+            cb_cx = cbx - cat_fx * 2
+            cb_cy = cby + 3
+            cb_r = pygame.Rect(cb_cx - cbw // 2, cb_cy - cbh // 2, cbw, cbh)
+            ch_cx = cbx + cat_fx * 9
+            ch_cy = cby - 1
+            ch_r = 9
+            # Pointed ear drawn first; body/head painted over its base so only tip pokes up
+            ear_tip = (ch_cx - cat_fx * 2, ch_cy - ch_r - 7)
+            ear_bb  = (ch_cx - cat_fx * 7, ch_cy - ch_r + 3)
+            ear_bf  = (ch_cx + cat_fx * 3, ch_cy - ch_r + 3)
+            pygame.draw.polygon(screen, (200, 105, 25), [ear_tip, ear_bb, ear_bf])
+            pygame.draw.ellipse(screen, (235, 158, 65), cb_r)
+            pygame.draw.circle(screen, (235, 158, 65), (ch_cx, ch_cy), ch_r)
+            i_tip = (ear_tip[0], ear_tip[1] + 4)
+            i_b   = (ear_bb[0] + cat_fx * 2, ear_bb[1] - 1)
+            i_f   = (ear_bf[0] - cat_fx * 2, ear_bf[1] - 1)
+            pygame.draw.polygon(screen, (255, 185, 170), [i_tip, i_b, i_f])
+            # Eye: yellow iris + black slit pupil
+            eye_c = (ch_cx + cat_fx * 3, ch_cy - 3)
+            pygame.draw.circle(screen, (255, 220, 80), eye_c, 3)
+            pygame.draw.circle(screen, (10, 10, 10), eye_c, 1)
+            # Nose
+            cn_cx = ch_cx + cat_fx * (ch_r - 2)
+            cn_cy = ch_cy + 2
+            pygame.draw.circle(screen, (255, 160, 150), (cn_cx, cn_cy), 2)
+            # Whiskers
+            pygame.draw.line(screen, (220, 220, 200), (cn_cx, cn_cy - 1), (cn_cx + cat_fx * 10, cn_cy - 3), 1)
+            pygame.draw.line(screen, (220, 220, 200), (cn_cx, cn_cy + 1), (cn_cx + cat_fx * 10, cn_cy + 3), 1)
+            # Tail curls up from rear of body
+            ct_sx = cb_cx - cat_fx * (cbw // 2)
+            ct_mx = ct_sx - cat_fx * 8
+            ct_my = cb_cy - 5
+            ct_ex = ct_mx - cat_fx * 3
+            ct_ey = ct_my - 10
+            pygame.draw.line(screen, (220, 140, 55), (ct_sx, cb_cy), (ct_mx, ct_my), 3)
+            pygame.draw.line(screen, (210, 130, 50), (ct_mx, ct_my), (ct_ex, ct_ey), 2)
+            # Legs
+            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(cb_cx - 7, cb_r.bottom - 3, 9, 5))
+            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(cb_cx + 2, cb_r.bottom - 3, 9, 5))
 
         mx, my = state.mouse_pos
         mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
         bob = int(math.sin(animation_frame / 7.0) * 2)
-        if sprites.mouse_frames:
-            frame = sprites.mouse_frames[(animation_frame // 8) % len(sprites.mouse_frames)]
-            if mouse_facing < 0:
-                frame = pygame.transform.flip(frame, True, False)
-            pos = (
-                mouse_rect.centerx - frame.get_width() // 2,
-                mouse_rect.centery - frame.get_height() // 2 + bob,
-            )
-            screen.blit(
-                frame,
-                pos,
-            )
-            # Tiny blush dots anchored to the tile face area (avoids sheet padding offsets).
-            blush_y = mouse_rect.centery + TILE_SIZE // 6 + bob
-            lx = mouse_rect.centerx - TILE_SIZE // 8
-            rx = mouse_rect.centerx + TILE_SIZE // 8
-            pygame.draw.circle(screen, (255, 170, 185), (lx, blush_y), 2)
-            pygame.draw.circle(screen, (255, 170, 185), (rx, blush_y), 2)
-
-            # Add a crisp mouse silhouette overlay so the character never reads as a plain circle.
-            face_y = mouse_rect.centery - TILE_SIZE // 8 + bob
-            ear_sz = max(4, TILE_SIZE // 7)
-            ear_l = pygame.Rect(mouse_rect.centerx - TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
-            ear_r = pygame.Rect(mouse_rect.centerx + TILE_SIZE // 5 - ear_sz // 2, face_y - ear_sz, ear_sz, ear_sz)
-            pygame.draw.ellipse(screen, (215, 205, 200), ear_l)
-            pygame.draw.ellipse(screen, (215, 205, 200), ear_r)
-            pygame.draw.circle(screen, (255, 185, 195), ear_l.center, max(1, ear_sz // 4))
-            pygame.draw.circle(screen, (255, 185, 195), ear_r.center, max(1, ear_sz // 4))
-
-            nose = (mouse_rect.centerx, face_y + TILE_SIZE // 6)
-            pygame.draw.circle(screen, (255, 158, 172), nose, max(1, TILE_SIZE // 18))
-            whisk = max(6, TILE_SIZE // 5)
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1]), (nose[0] - whisk, nose[1] - 2), 1)
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1]), (nose[0] + whisk, nose[1] - 2), 1)
-
-            tail_dir = -1 if mouse_facing > 0 else 1
-            tail_start = (mouse_rect.centerx - TILE_SIZE // 3 if mouse_facing > 0 else mouse_rect.centerx + TILE_SIZE // 3,
-                          mouse_rect.centery + TILE_SIZE // 7 + bob)
-            tail_mid = (tail_start[0] + tail_dir * (TILE_SIZE // 4), tail_start[1] + TILE_SIZE // 10)
-            tail_end = (tail_mid[0] + tail_dir * (TILE_SIZE // 4), tail_mid[1] - TILE_SIZE // 12)
-            pygame.draw.line(screen, (190, 180, 175), tail_start, tail_mid, 3)
-            pygame.draw.line(screen, (178, 168, 163), tail_mid, tail_end, 2)
-        else:
-            # Fallback mouse model (when sprite sheet is unavailable)
-            shadow = mouse_rect.inflate(-14, -24)
-            shadow.y += TILE_SIZE // 2 + 6
-            pygame.draw.ellipse(screen, (20, 18, 14), shadow)
-
-            body = mouse_rect.inflate(-10, -10)
-            body.y += bob
-            pygame.draw.ellipse(screen, (212, 200, 195), body)
-            ear_l = pygame.Rect(body.x + 4, body.y - 4, 7, 7)
-            ear_r = pygame.Rect(body.right - 11, body.y - 4, 7, 7)
-            pygame.draw.ellipse(screen, (212, 200, 195), ear_l)
-            pygame.draw.ellipse(screen, (212, 200, 195), ear_r)
-            pygame.draw.circle(screen, (255, 185, 195), ear_l.center, 2)
-            pygame.draw.circle(screen, (255, 185, 195), ear_r.center, 2)
-            eye_y = body.y + body.height // 2 - 3
-            pygame.draw.circle(screen, (30, 30, 40), (body.centerx - 6, eye_y), 2)
-            pygame.draw.circle(screen, (30, 30, 40), (body.centerx + 6, eye_y), 2)
-            nose = (body.centerx, eye_y + 6)
-            pygame.draw.circle(screen, (255, 158, 172), nose, 2)
-            # Whiskers
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1]), (nose[0] - 10, nose[1] - 2), 1)
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] - 2, nose[1] + 1), (nose[0] - 10, nose[1] + 3), 1)
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1]), (nose[0] + 10, nose[1] - 2), 1)
-            pygame.draw.line(screen, (170, 165, 160), (nose[0] + 2, nose[1] + 1), (nose[0] + 10, nose[1] + 3), 1)
-            # Tail reacts to facing direction
-            tail_dir = -1 if mouse_facing > 0 else 1
-            tail_start = (body.x + 2, body.centery + 1) if mouse_facing > 0 else (body.right - 2, body.centery + 1)
-            tail_mid = (tail_start[0] + 8 * tail_dir, tail_start[1] + 3)
-            tail_end = (tail_mid[0] + 8 * tail_dir, tail_mid[1] - 2)
-            pygame.draw.line(screen, (190, 180, 175), tail_start, tail_mid, 3)
-            pygame.draw.line(screen, (178, 168, 163), tail_mid, tail_end, 2)
-            pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width // 3, body.y + body.height * 2 // 3), 2)
-            pygame.draw.circle(screen, (255, 170, 185), (body.x + body.width * 2 // 3, body.y + body.height * 2 // 3), 2)
+        # Side-profile mouse drawing (always procedural — ignores sprite sheets)
+        fx = 1 if mouse_facing >= 0 else -1
+        bx = mouse_rect.centerx
+        by = mouse_rect.centery + bob
+        # Shadow
+        pygame.draw.ellipse(screen, (20, 18, 14), pygame.Rect(bx - 14, by + 11, 28, 7))
+        # Body: horizontal oval
+        mbw, mbh = 22, 12
+        mb_cx = bx - fx * 3
+        mb_cy = by + 2
+        mb_r = pygame.Rect(mb_cx - mbw // 2, mb_cy - mbh // 2, mbw, mbh)
+        # Head: circle at front
+        mh_cx = bx + fx * 9
+        mh_cy = by - 2
+        mh_r = 7
+        # Ear: round, behind/above head — draw first so head overlaps its base
+        me_cx = mh_cx - fx * 2
+        me_cy = mh_cy - mh_r + 1
+        pygame.draw.circle(screen, (215, 205, 200), (me_cx, me_cy), 5)
+        pygame.draw.circle(screen, (255, 185, 195), (me_cx, me_cy), 2)
+        pygame.draw.ellipse(screen, (212, 200, 195), mb_r)
+        pygame.draw.circle(screen, (212, 200, 195), (mh_cx, mh_cy), mh_r)
+        # Snout nub
+        ms_cx = mh_cx + fx * (mh_r - 1)
+        ms_cy = mh_cy + 2
+        pygame.draw.ellipse(screen, (225, 215, 210), pygame.Rect(ms_cx - 3, ms_cy - 2, 6, 4))
+        # Nose + eye
+        mn_x = ms_cx + fx * 3
+        pygame.draw.circle(screen, (255, 158, 172), (mn_x, ms_cy), 2)
+        pygame.draw.circle(screen, (30, 30, 40), (mh_cx + fx * 2, mh_cy - 3), 2)
+        pygame.draw.circle(screen, (200, 230, 255), (mh_cx + fx * 2, mh_cy - 3), 1)
+        # Whiskers
+        pygame.draw.line(screen, (170, 165, 160), (mn_x, ms_cy), (mn_x + fx * 9, ms_cy - 2), 1)
+        pygame.draw.line(screen, (170, 165, 160), (mn_x, ms_cy), (mn_x + fx * 9, ms_cy + 2), 1)
+        # Tail from rear of body, curling behind
+        mt_sx = mb_cx - fx * (mbw // 2)
+        mt_mx = mt_sx - fx * 7
+        mt_my = mb_cy + 6
+        mt_ex = mt_mx - fx * 5
+        pygame.draw.line(screen, (190, 180, 175), (mt_sx, mb_cy), (mt_mx, mt_my), 3)
+        pygame.draw.line(screen, (178, 168, 163), (mt_mx, mt_my), (mt_ex, mt_my - 8), 2)
+        # Legs
+        pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx - 6, mb_r.bottom - 3, 8, 5))
+        pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx + 2, mb_r.bottom - 3, 8, 5))
 
         for tw in block_tweens:
             t = tw["t"]
