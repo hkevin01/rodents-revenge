@@ -26,3 +26,6 @@ htmlcov/
 
 # User data
 scores.json
+
+# pygbag web build output
+src/rodents_revenge/build/

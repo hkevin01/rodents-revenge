@@ -33,5 +33,6 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: build/web
+          # pygbag writes output into the app folder, not repo root
+          folder: src/rodents_revenge/build/web
           clean: true

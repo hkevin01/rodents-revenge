@@ -1078,7 +1078,10 @@ async def run_game() -> None:
     mouse_facing = 1   # +1 = right (default), -1 = left
     cat_alert: dict[tuple[int, int], int] = {}  # cat pos -> remaining flash frames
     show_help = False
-    from rodents_revenge.scores import load_scores, save_score, is_high_score
+    try:
+        from rodents_revenge.scores import load_scores, save_score, is_high_score
+    except ImportError:  # flat-package mode inside pygbag / WASM
+        from scores import load_scores, save_score, is_high_score  # type: ignore[no-redef]
     state = GameState()
     cat_frame_counter = 0
     animation_frame = 0
