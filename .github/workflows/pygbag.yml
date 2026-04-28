@@ -41,6 +41,7 @@ jobs:
           # Remove deprecated/unsupported iframe permissions that trigger console warnings.
           html = html.replace("; monetization", "")
           html = html.replace("; xr;", ";")
+          html = html.replace("; xr-spatial-tracking", "")
 
           # Remove duplicate fullscreen attributes since allow=fullscreen already exists.
             html = re.sub(
