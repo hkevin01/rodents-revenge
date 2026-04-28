@@ -65,16 +65,16 @@ jobs:
           )
 
           # Reduce template debug noise in browser console.
-            html = re.sub(r'gui_debug\s*:\s*\d+,', 'gui_debug : 0,', html)
+          html = re.sub(r'gui_debug\s*:\s*\d+,', 'gui_debug : 0,', html)
           html = html.replace('data-os="vtx,snd,gui"', 'data-os="snd,gui"')
           html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
-            html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
+          html = re.sub(r'quiet\s*:\s*false,', 'quiet : true,', html)
 
-            # Replace template TODO warning with real resize behavior.
-            html = html.replace(
+          # Replace template TODO warning with real resize behavior.
+          html = html.replace(
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)\n    }',
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
-            )
+          )
 
           index_path.write_text(html, encoding="utf-8")
           PY
