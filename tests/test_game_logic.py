@@ -36,16 +36,15 @@ def test_mouse_pushes_block() -> None:
 
 def test_trapped_cat_turns_to_cheese() -> None:
     state = blank_state()
-    state.cats = [(3, 3)]
-    state.board[2][3] = BLOCK
-    state.board[4][3] = BLOCK
-    state.board[3][2] = BLOCK
-    state.board[3][4] = BLOCK
+    state.cats = [(5, 5)]
+    # Block all 8 surrounding cells — diagonal movement requires full 8-way surround
+    for bx, by in [(4,4),(5,4),(6,4),(4,5),(6,5),(4,6),(5,6),(6,6)]:
+        state.board[by][bx] = BLOCK
 
     state.step_cats()
 
     assert state.cats == []
-    assert state.board[3][3] == CHEESE
+    assert state.board[5][5] == CHEESE
 
 
 def test_level_clear_delay_set_when_all_cats_removed() -> None:
@@ -105,12 +104,13 @@ def test_respawn_invincibility_prevents_death() -> None:
 
 def test_multi_trap_bonus_two_cats() -> None:
     state = blank_state()
-    # Cat at (3,3) enclosed by blocks on all four sides.
-    state.cats = [(3, 3), (5, 3)]
-    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+    # Cats at (3,5) and (5,5) — fully enclosed on all 8 sides each.
+    state.cats = [(3, 5), (5, 5)]
+    # Surround (3,5): all 8 neighbors
+    for bx, by in [(2,4),(3,4),(4,4),(2,5),(4,5),(2,6),(3,6),(4,6)]:
         state.board[by][bx] = BLOCK
-    # Cat at (5,3) enclosed on all four sides.
-    for bx, by in [(5, 2), (5, 4), (4, 3), (6, 3)]:
+    # Surround (5,5): all 8 neighbors (some shared with above)
+    for bx, by in [(4,4),(5,4),(6,4),(4,5),(6,5),(4,6),(5,6),(6,6)]:
         state.board[by][bx] = BLOCK
 
     state.step_cats()
@@ -124,8 +124,8 @@ def test_multi_trap_bonus_two_cats() -> None:
 
 def test_single_trap_no_combo_bonus() -> None:
     state = blank_state()
-    state.cats = [(3, 3)]
-    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+    state.cats = [(5, 5)]
+    for bx, by in [(4,4),(5,4),(6,4),(4,5),(6,5),(4,6),(5,6),(6,6)]:
         state.board[by][bx] = BLOCK
 
     state.step_cats()
@@ -221,10 +221,14 @@ def test_trapped_cat_resolves_immediately_after_player_move() -> None:
     state = blank_state()
     state.mouse_pos = (2, 3)
     state.cats = [(5, 3)]
-    # Pre-place 3 sides of a trap around the cat.
-    state.board[2][5] = BLOCK
-    state.board[4][5] = BLOCK
-    state.board[3][6] = BLOCK
+    # Pre-place 7 of 8 surrounding cells (all except left side (4,3) to be pushed).
+    state.board[2][5] = BLOCK  # (5,2) above
+    state.board[4][5] = BLOCK  # (5,4) below
+    state.board[3][6] = BLOCK  # (6,3) right
+    state.board[2][4] = BLOCK  # (4,2) diagonal
+    state.board[2][6] = BLOCK  # (6,2) diagonal
+    state.board[4][4] = BLOCK  # (4,4) diagonal
+    state.board[4][6] = BLOCK  # (6,4) diagonal
     # Push this block from (3,3) into (4,3) to close the final side.
     state.board[3][3] = BLOCK
     state.board[3][4] = EMPTY
@@ -477,9 +481,9 @@ def test_cheese_scatter_increases_with_level() -> None:
 def test_near_clear_warn_sound_fires_at_two_cats() -> None:
     """'warn' sound appended to pending_sounds when cats drop to exactly 2."""
     state = blank_state()
-    # Three cats; surround one so it gets trapped leaving 2 survivors
-    state.cats = [(3, 3), (5, 3), (5, 5)]
-    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+    # Three cats; fully surround one (3,5) on all 8 sides leaving 2 survivors.
+    state.cats = [(3, 5), (5, 3), (5, 5)]
+    for bx, by in [(2,4),(3,4),(4,4),(2,5),(4,5),(2,6),(3,6),(4,6)]:
         state.board[by][bx] = BLOCK
 
     state.step_cats()
@@ -491,13 +495,14 @@ def test_near_clear_warn_sound_fires_at_two_cats() -> None:
 def test_near_clear_warn_fires_only_once_per_level() -> None:
     """Repeated step_cats calls must not re-queue 'warn'."""
     state = blank_state()
-    state.cats = [(3, 3), (5, 3), (5, 5)]
-    for bx, by in [(3, 2), (3, 4), (2, 3), (4, 3)]:
+    # Fully surround cat at (3,5) — same setup as warn-fires test.
+    state.cats = [(3, 5), (5, 3), (5, 5)]
+    for bx, by in [(2,4),(3,4),(4,4),(2,5),(4,5),(2,6),(3,6),(4,6)]:
         state.board[by][bx] = BLOCK
 
-    state.step_cats()
+    state.step_cats()             # (3,5) trapped → 2 remain → warn fires
     state.pending_sounds.clear()  # consume queue
-    state.step_cats()             # second step — should NOT re-warn
+    state.step_cats()             # second step — near_clear_warned True → no warn
 
     assert "warn" not in state.pending_sounds
 

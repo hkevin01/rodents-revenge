@@ -387,6 +387,7 @@ class GameState:
     game_over: bool = False
     win_level_flash: int = 0
     respawn_flash: int = 0
+    respawn_pending: bool = False
     level_clear_delay: int = 0
     trap_combo_flash: int = 0
     last_trap_count: int = 0
@@ -630,6 +631,7 @@ class GameState:
             self.game_over = True
         else:
             self.respawn_flash = 90
+            self.respawn_pending = True
             # Spawn mouse at least 6 squares away from ALL cats.
             # If no such cell exists, relax to 3, then 1, then any free cell.
             for min_dist in (6, 3, 1, 0):
@@ -1246,6 +1248,7 @@ async def run_game() -> None:
         from scores import load_scores, save_score, is_high_score  # type: ignore[no-redef]
     state = GameState()
     cat_ms_accum = 0
+    countdown_ms = COUNTDOWN_TOTAL_MS
     dt_ms = 0
     animation_frame = 0
     phase = "title"  # "title" | "playing"
@@ -1296,7 +1299,7 @@ async def run_game() -> None:
     def _apply_vjoy_move(d: tuple[int, int]) -> bool:
         """Issue one grid step from joystick input; return True if player moved."""
         nonlocal mouse_facing, player_moved
-        if state.game_over or state.paused or show_help:
+        if state.game_over or state.paused or show_help or countdown_ms > 0:
             return False
         moved = state.handle_player_move(d[0], d[1])
         if moved and d[0] != 0:
@@ -1858,6 +1861,7 @@ async def run_game() -> None:
                             cat_count_offset=s["cat_count_offset"],
                         )
                         cat_ms_accum = 0
+                        countdown_ms = COUNTDOWN_TOTAL_MS
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -1944,6 +1948,7 @@ async def run_game() -> None:
                             cat_count_offset=s["cat_count_offset"],
                         )
                         cat_ms_accum = 0
+                        countdown_ms = COUNTDOWN_TOTAL_MS
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -2030,6 +2035,7 @@ async def run_game() -> None:
                             cat_count_offset=s["cat_count_offset"],
                         )
                         cat_ms_accum = 0
+                        countdown_ms = COUNTDOWN_TOTAL_MS
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -2113,7 +2119,14 @@ async def run_game() -> None:
                 vjoy_held_frames = 0
 
         if phase == "playing" and not state.paused and not show_help:
-            if not state.game_over:
+            # Countdown: tick down, block cat movement until it expires
+            if countdown_ms > 0:
+                countdown_ms = max(0, countdown_ms - dt_ms)
+            # Handle respawn-triggered countdowns
+            if state.respawn_pending and not state.game_over:
+                state.respawn_pending = False
+                countdown_ms = COUNTDOWN_TOTAL_MS
+            if not state.game_over and countdown_ms <= 0:
                 cat_ms_accum += dt_ms
                 cat_delay_ms = max(150, CAT_MOVE_DELAY_MS - (state.level - 1) * 20 + state.cat_delay_bonus)
                 if cat_ms_accum >= cat_delay_ms:
@@ -2125,6 +2138,8 @@ async def run_game() -> None:
                 if state.level_clear_delay == 0:
                     state.reset_level(state.level + 1)
                     block_tweens.clear()
+                    countdown_ms = COUNTDOWN_TOTAL_MS
+                    cat_ms_accum = 0
 
             if state.respawn_flash > 0:
                 state.respawn_flash -= 1
@@ -2155,6 +2170,24 @@ async def run_game() -> None:
 
         if phase == "playing":
             draw_board()
+            if countdown_ms > 0 and not state.game_over and not state.paused:
+                # Countdown overlay: dim screen then show big number
+                _cd_ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                _cd_ov.fill((0, 0, 0, 110))
+                screen.blit(_cd_ov, (0, 0))
+                if countdown_ms > COUNTDOWN_GO_MS:
+                    _cd_step = math.ceil((countdown_ms - COUNTDOWN_GO_MS) / COUNTDOWN_STEP_MS)
+                    _cd_label = str(max(1, min(3, _cd_step)))
+                    _cd_col = (255, 220, 60)
+                else:
+                    _cd_label = "GO!"
+                    _cd_col = (100, 255, 130)
+                _cd_shadow = title_font.render(_cd_label, True, (0, 0, 0))
+                _cd_surf   = title_font.render(_cd_label, True, _cd_col)
+                _cd_x = SCREEN_WIDTH  // 2 - _cd_surf.get_width()  // 2
+                _cd_y = SCREEN_HEIGHT // 2 - _cd_surf.get_height() // 2
+                screen.blit(_cd_shadow, (_cd_x + 3, _cd_y + 3))
+                screen.blit(_cd_surf,   (_cd_x,     _cd_y))
             if state.paused and not state.game_over:
                 # Pause overlay
                 ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
