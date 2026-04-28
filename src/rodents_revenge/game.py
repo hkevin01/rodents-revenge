@@ -1757,9 +1757,9 @@ async def run_game() -> None:
         screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, 55))
         sub_surf = small_font.render("Python Clone", True, (140, 130, 90))
         screen.blit(sub_surf, (SCREEN_WIDTH // 2 - sub_surf.get_width() // 2, 108))
+        label = font.render("HIGH SCORES", True, colors["text"])
+        screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, 158))
         if scores:
-            label = font.render("HIGH SCORES", True, colors["text"])
-            screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, 158))
             for i, entry in enumerate(scores[:5]):
                 line = small_font.render(
                     f"{i + 1}.  {entry.get('initials', '---')}  {entry['score']:05d}   LVL {entry['level']:02d}",
@@ -1767,6 +1767,9 @@ async def run_game() -> None:
                     (255, 220, 60) if i == 0 else (200, 190, 160),
                 )
                 screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, 192 + i * 28))
+        else:
+            empty = small_font.render("No scores yet — play a game!", True, (130, 125, 100))
+            screen.blit(empty, (SCREEN_WIDTH // 2 - empty.get_width() // 2, 200))
         # Difficulty selector — large touch-friendly buttons
         dlabel = small_font.render("DIFFICULTY", True, (160, 155, 130))
         screen.blit(dlabel, (SCREEN_WIDTH // 2 - dlabel.get_width() // 2, SCREEN_HEIGHT - 240))
