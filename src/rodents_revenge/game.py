@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import array
+import asyncio
 import heapq
 import math
 import random
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1019,7 +1021,7 @@ def _make_icon() -> pygame.Surface:
     return surf
 
 
-def run_game() -> None:
+async def run_game() -> None:
     try:
         pygame.mixer.pre_init(22050, -16, 1, 512)
     except Exception:
@@ -1027,6 +1029,10 @@ def run_game() -> None:
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption(GAME_TITLE)
+    # Keep pixel-art look on high-DPI screens (iPad, Retina, etc.)
+    if sys.platform == "emscripten":
+        import platform  # type: ignore[import]
+        platform.window.canvas.style.imageRendering = "pixelated"
     pygame.display.set_icon(_make_icon())
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 24, bold=True)
@@ -1550,6 +1556,7 @@ def run_game() -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            # ---- keyboard quit (skip ESC-to-quit on web) --------------------
             # ---- touch finger events ----------------------------------------
             elif event.type == pygame.FINGERDOWN:
                 sx = int(event.x * SCREEN_WIDTH)
@@ -1646,7 +1653,12 @@ def run_game() -> None:
             # ---- keyboard events --------------------------------------------
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    # On web, ESC is intercepted by the browser; go to title instead
+                    if sys.platform == "emscripten":
+                        phase = "title"
+                        scores = load_scores()
+                    else:
+                        running = False
                 elif phase == "title":
                     if event.key == pygame.K_RETURN:
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
@@ -1775,6 +1787,7 @@ def run_game() -> None:
             draw_title_screen()
 
         pygame.display.flip()
+        await asyncio.sleep(0)  # required for pygbag / WebAssembly
         clock.tick(FPS)
 
     pygame.quit()
