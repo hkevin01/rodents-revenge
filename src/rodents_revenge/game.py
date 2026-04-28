@@ -1755,13 +1755,6 @@ async def run_game() -> None:
         for gx in range(0, SCREEN_WIDTH + 1, 40):
             for gy in range(0, SCREEN_HEIGHT + 1, 40):
                 pygame.draw.circle(screen, dot_col, (gx, gy), 1)
-        # Vignette: four dark edge bands
-        vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        for depth in range(48):
-            alpha = int(100 * (1 - depth / 48) ** 2)
-            pygame.draw.rect(vig, (0, 0, 0, alpha),
-                             (depth, depth, SCREEN_WIDTH - depth * 2, SCREEN_HEIGHT - depth * 2), 1)
-        screen.blit(vig, (0, 0))
 
         # --- Title: shadow + outline glow + main text ---
         title_text = GAME_TITLE.upper()
