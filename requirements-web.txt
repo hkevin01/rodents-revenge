@@ -1,0 +1,4 @@
+# Dependencies for building the WebAssembly / GitHub Pages version.
+# Install with:  pip install -r requirements-web.txt
+# Build with:    python -m pygbag --build src/rodents_revenge
+pygbag>=0.9
