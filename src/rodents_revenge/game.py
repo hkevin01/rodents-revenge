@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 720  # 720 frames @ 60 FPS = 1 cat step per 12 sec
+CAT_MOVE_DELAY_MS = 12000  # milliseconds between cat steps (device-independent)
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -1244,9 +1244,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus": 180, "cat_count_offset": -1},
-        "normal": {"cat_delay_bonus":   0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus": -90, "cat_count_offset":  1},
+        "easy":   {"cat_delay_bonus":  3000, "cat_count_offset": -1},
+        "normal": {"cat_delay_bonus":     0, "cat_count_offset":  0},
+        "hard":   {"cat_delay_bonus": -1500, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
@@ -1259,7 +1259,8 @@ async def run_game() -> None:
     except ImportError:  # flat-package mode inside pygbag / WASM
         from scores import load_scores, save_score, is_high_score  # type: ignore[no-redef]
     state = GameState()
-    cat_frame_counter = 0
+    cat_ms_accum = 0
+    dt_ms = 0
     animation_frame = 0
     phase = "title"  # "title" | "playing"
     score_saved = False
@@ -1864,7 +1865,7 @@ async def run_game() -> None:
                             cat_delay_bonus=s["cat_delay_bonus"],
                             cat_count_offset=s["cat_count_offset"],
                         )
-                        cat_frame_counter = 0
+                        cat_ms_accum = 0
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -1950,7 +1951,7 @@ async def run_game() -> None:
                             cat_delay_bonus=s["cat_delay_bonus"],
                             cat_count_offset=s["cat_count_offset"],
                         )
-                        cat_frame_counter = 0
+                        cat_ms_accum = 0
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -2036,7 +2037,7 @@ async def run_game() -> None:
                             cat_delay_bonus=s["cat_delay_bonus"],
                             cat_count_offset=s["cat_count_offset"],
                         )
-                        cat_frame_counter = 0
+                        cat_ms_accum = 0
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
@@ -2121,10 +2122,10 @@ async def run_game() -> None:
 
         if phase == "playing" and not state.paused and not show_help:
             if not state.game_over:
-                cat_frame_counter += 1
-                cat_delay = max(2, CAT_MOVE_DELAY_FRAMES - (state.level - 1) + state.cat_delay_bonus)
-                if cat_frame_counter >= cat_delay:
-                    cat_frame_counter = 0
+                cat_ms_accum += dt_ms
+                cat_delay_ms = max(500, CAT_MOVE_DELAY_MS - (state.level - 1) * 200 + state.cat_delay_bonus)
+                if cat_ms_accum >= cat_delay_ms:
+                    cat_ms_accum = 0
                     state.step_cats()
 
             if state.level_clear_delay > 0 and not state.game_over:
@@ -2194,6 +2195,6 @@ async def run_game() -> None:
 
         pygame.display.flip()
         await asyncio.sleep(0)  # required for pygbag / WebAssembly
-        clock.tick(FPS)
+        dt_ms = clock.tick(FPS)
 
     pygame.quit()
