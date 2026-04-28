@@ -39,7 +39,7 @@ CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_FRAMES = 28
+CAT_MOVE_DELAY_FRAMES = 14   # 14 frames @ 60 FPS ≈ 4.3 cat steps/sec — clearly independent of player input
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
@@ -1194,9 +1194,9 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus":  3, "cat_count_offset": -1},
+        "easy":   {"cat_delay_bonus":  5, "cat_count_offset": -1},
         "normal": {"cat_delay_bonus":  0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus": -2, "cat_count_offset":  1},
+        "hard":   {"cat_delay_bonus": -3, "cat_count_offset":  1},
     }
     diff_idx = 1  # default: normal
     TWEEN_FRAMES = 6
