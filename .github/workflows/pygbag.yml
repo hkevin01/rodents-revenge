@@ -29,6 +29,41 @@ jobs:
         # --build skips the local test server; output goes to build/web/
         run: python -m pygbag --build src/rodents_revenge
 
+      - name: Sanitize generated index.html for browser compatibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index_path = Path("src/rodents_revenge/build/web/index.html")
+          html = index_path.read_text(encoding="utf-8")
+
+          # Remove deprecated/unsupported iframe permissions that trigger console warnings.
+          html = html.replace("; monetization", "")
+          html = html.replace("; xr;", ";")
+
+          # Remove duplicate fullscreen attributes since allow=fullscreen already exists.
+            html = re.sub(
+              r'^\s*(?:allowfullscreen|webkitallowfullscreen|msallowfullscreen|mozallowfullscreen)="true"\s*\n',
+              "",
+              html,
+              flags=re.MULTILINE,
+            )
+
+          # Avoid loading the remote empty iframe page (and its noisy policy headers).
+          html = html.replace(
+              'src="https://pygame-web.github.io/cdn/0.9.3/empty.html"',
+              'src="about:blank"',
+          )
+
+          # Reduce template debug noise in browser console.
+          html = html.replace('gui_debug : 2,', 'gui_debug : 0,')
+          html = html.replace('data-os="vtx,snd,gui"', 'data-os="snd,gui"')
+          html = html.replace('xtermjs : "1" ,', 'xtermjs : "0" ,')
+
+          index_path.write_text(html, encoding="utf-8")
+          PY
+
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
