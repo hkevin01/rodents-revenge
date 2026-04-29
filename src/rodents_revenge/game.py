@@ -1264,6 +1264,7 @@ async def run_game() -> None:
     entering_initials = False
     entry_initials = ""
     initials_key_rects: list[tuple[str, pygame.Rect]] = []
+    sound_enabled = True
 
     # --- Virtual joystick touch state ---
     # Floats to wherever the player first touches (left half of screen)
@@ -1283,9 +1284,10 @@ async def run_game() -> None:
     key_up_held = False
     key_down_held = False
 
-    # Touch buttons (Pause, Help) rendered in HUD — rects set in draw_board
+    # Touch buttons (Pause, Help, Sound) rendered in HUD — rects set in draw_board
     _tbtn_pause_rect = pygame.Rect(0, 0, TBTN_W, TBTN_H)
     _tbtn_help_rect  = pygame.Rect(0, 0, TBTN_W, TBTN_H)
+    _tbtn_sound_rect = pygame.Rect(0, 0, TBTN_W, TBTN_H)
     # Overlay action buttons (Menu / Restart on game-over, Resume on pause)
     _tbtn_menu_rect    = pygame.Rect(0, 0, 160, 64)
     _tbtn_restart_rect = pygame.Rect(0, 0, 160, 64)
@@ -1522,12 +1524,19 @@ async def run_game() -> None:
         screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
         # HUD touch buttons — Pause and Help, centred in the HUD
         _btn_y = HUD_HEIGHT // 2 - TBTN_H // 2
-        pause_x = SCREEN_WIDTH // 2 - TBTN_W - 5
-        help_x  = SCREEN_WIDTH // 2 + 5
+        _btn_gap = 8
+        _3btn_total = 3 * TBTN_W + 2 * _btn_gap
+        pause_x = SCREEN_WIDTH // 2 - _3btn_total // 2
+        help_x  = pause_x + TBTN_W + _btn_gap
+        snd_x   = help_x  + TBTN_W + _btn_gap
         _tbtn_pause_rect.topleft = (pause_x, _btn_y)
         _tbtn_help_rect.topleft  = (help_x,  _btn_y)
-        _draw_touch_btn(screen, _tbtn_pause_rect, "⏸ PAUSE", active=state.paused)
-        _draw_touch_btn(screen, _tbtn_help_rect,  "? HELP",  active=show_help)
+        _tbtn_sound_rect.topleft = (snd_x,   _btn_y)
+        _draw_touch_btn(screen, _tbtn_pause_rect, "PAUSE",   active=state.paused)
+        _draw_touch_btn(screen, _tbtn_help_rect,  "HELP",    active=show_help)
+        _snd_lbl = "SND ON" if sound_enabled else "SND OFF"
+        _snd_col = (50, 70, 50) if sound_enabled else (80, 40, 40)
+        _draw_touch_btn(screen, _tbtn_sound_rect, _snd_lbl,  color=_snd_col, active=False)
 
         # Lives display — one pip per life
         for i in range(state.lives):
@@ -1925,6 +1934,8 @@ async def run_game() -> None:
                     elif _tbtn_help_rect.collidepoint(sx, sy):
                         if not state.game_over and not state.paused:
                             show_help = not show_help
+                    elif _tbtn_sound_rect.collidepoint(sx, sy):
+                        sound_enabled = not sound_enabled
                     # Game-over overlay — initials keyboard first, then MENU/RESTART
                     elif state.game_over:
                         if entering_initials:
@@ -2049,6 +2060,8 @@ async def run_game() -> None:
                         state.paused = not state.paused
                     elif event.key == pygame.K_h:
                         show_help = not show_help
+                    elif event.key == pygame.K_m:
+                        sound_enabled = not sound_enabled
                     elif not state.paused and not show_help and countdown_ms <= 0:
                         if event.key in (pygame.K_LEFT, pygame.K_a):
                             player_moved = state.handle_player_move(-1, 0)
@@ -2107,6 +2120,8 @@ async def run_game() -> None:
                     elif _tbtn_help_rect.collidepoint(sx, sy):
                         if not state.game_over and not state.paused:
                             show_help = not show_help
+                    elif _tbtn_sound_rect.collidepoint(sx, sy):
+                        sound_enabled = not sound_enabled
                     elif state.paused and _tbtn_resume_rect.collidepoint(sx, sy):
                         state.paused = False
                     elif state.game_over:
@@ -2246,9 +2261,10 @@ async def run_game() -> None:
             block_tweens[:] = [tw for tw in block_tweens if tw["t"] < 1.0]
 
             for snd_name in state.pending_sounds:
-                s = snd.get(snd_name)
-                if s:
-                    s.play()
+                if sound_enabled:
+                    s = snd.get(snd_name)
+                    if s:
+                        s.play()
             state.pending_sounds.clear()
 
         if phase == "playing":
