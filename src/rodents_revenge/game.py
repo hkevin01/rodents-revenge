@@ -2026,6 +2026,10 @@ async def run_game() -> None:
                             block_tweens.clear()
                             score_saved = False
                             new_high_score = False
+                            entering_initials = False
+                            entry_initials = ""
+                            countdown_ms = COUNTDOWN_TOTAL_MS
+                            cat_ms_accum = 0
                         elif entering_initials:
                             if pygame.K_a <= event.key <= pygame.K_z and len(entry_initials) < 3:
                                 entry_initials += chr(event.key - pygame.K_a + ord("A"))
@@ -2035,6 +2039,7 @@ async def run_game() -> None:
                                 save_score(state.score, state.level, entry_initials)
                                 score_saved = True
                                 entering_initials = False
+                                new_high_score = False
                                 scores = load_scores()
                     elif event.key == pygame.K_p:
                         state.paused = not state.paused
@@ -2199,12 +2204,12 @@ async def run_game() -> None:
             if state.respawn_flash > 0:
                 state.respawn_flash -= 1
 
-            if state.game_over and not score_saved:
+            if state.game_over and not score_saved and not entering_initials:
                 new_high_score = is_high_score(state.score)
-                if new_high_score and not entering_initials:
+                if new_high_score:
                     entering_initials = True
                     entry_initials = ""
-                elif not new_high_score:
+                else:
                     save_score(state.score, state.level)
                     score_saved = True
                     scores = load_scores()
