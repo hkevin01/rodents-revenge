@@ -1747,7 +1747,7 @@ async def run_game() -> None:
         done_lbl = small_font.render("✓  DONE", True, (200, 240, 200) if entry_initials else (120, 120, 100))
         screen.blit(done_lbl, (done_r.centerx - done_lbl.get_width() // 2,
                                 done_r.centery - done_lbl.get_height() // 2))
-        new_key_rects.append(("✓", done_r))
+        new_key_rects.append(("DONE", done_r))
         initials_key_rects = new_key_rects
 
 
@@ -1925,9 +1925,23 @@ async def run_game() -> None:
                     elif _tbtn_help_rect.collidepoint(sx, sy):
                         if not state.game_over and not state.paused:
                             show_help = not show_help
-                    # Game-over overlay buttons
+                    # Game-over overlay — initials keyboard first, then MENU/RESTART
                     elif state.game_over:
-                        if _tbtn_menu_rect.collidepoint(sx, sy):
+                        if entering_initials:
+                            for key_char, key_rect in initials_key_rects:
+                                if key_rect.collidepoint(sx, sy):
+                                    if key_char == "⌫":
+                                        entry_initials = entry_initials[:-1]
+                                    elif key_char == "DONE" and entry_initials:
+                                        save_score(state.score, state.level, entry_initials)
+                                        score_saved = True
+                                        entering_initials = False
+                                        new_high_score = False
+                                        scores = load_scores()
+                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "DONE"):
+                                        entry_initials += key_char
+                                    break
+                        elif _tbtn_menu_rect.collidepoint(sx, sy):
                             phase = "title"
                             scores = load_scores()
                         elif _tbtn_restart_rect.collidepoint(sx, sy):
@@ -1935,20 +1949,10 @@ async def run_game() -> None:
                             block_tweens.clear()
                             score_saved = False
                             new_high_score = False
-                        # Initials virtual keyboard (shown over game-over overlay)
-                        elif entering_initials:
-                            for key_char, key_rect in initials_key_rects:
-                                if key_rect.collidepoint(sx, sy):
-                                    if key_char == "⌫":
-                                        entry_initials = entry_initials[:-1]
-                                    elif key_char == "✓" and entry_initials:
-                                        save_score(state.score, state.level, entry_initials)
-                                        score_saved = True
-                                        entering_initials = False
-                                        scores = load_scores()
-                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "✓"):
-                                        entry_initials += key_char
-                                    break
+                            entering_initials = False
+                            entry_initials = ""
+                            countdown_ms = COUNTDOWN_TOTAL_MS
+                            cat_ms_accum = 0
                     # Pause resume button
                     elif state.paused:
                         if _tbtn_resume_rect.collidepoint(sx, sy):
@@ -2106,13 +2110,32 @@ async def run_game() -> None:
                     elif state.paused and _tbtn_resume_rect.collidepoint(sx, sy):
                         state.paused = False
                     elif state.game_over:
-                        if _tbtn_menu_rect.collidepoint(sx, sy):
+                        if entering_initials:
+                            for key_char, key_rect in initials_key_rects:
+                                if key_rect.collidepoint(sx, sy):
+                                    if key_char == "⌫":
+                                        entry_initials = entry_initials[:-1]
+                                    elif key_char == "DONE" and entry_initials:
+                                        save_score(state.score, state.level, entry_initials)
+                                        score_saved = True
+                                        entering_initials = False
+                                        new_high_score = False
+                                        scores = load_scores()
+                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "DONE"):
+                                        entry_initials += key_char
+                                    break
+                        elif _tbtn_menu_rect.collidepoint(sx, sy):
                             phase = "title"
                             scores = load_scores()
                         elif _tbtn_restart_rect.collidepoint(sx, sy):
                             state.restart_game()
                             block_tweens.clear()
                             score_saved = False
+                            new_high_score = False
+                            entering_initials = False
+                            entry_initials = ""
+                            countdown_ms = COUNTDOWN_TOTAL_MS
+                            cat_ms_accum = 0
 
         # ---- keyboard auto-repeat for held arrows/WASD ---------------------
         if phase == "playing" and not state.paused and not show_help and not state.game_over and countdown_ms <= 0:
