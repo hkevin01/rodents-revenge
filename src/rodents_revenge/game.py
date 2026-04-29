@@ -1727,7 +1727,7 @@ async def run_game() -> None:
                 pygame.draw.line(screen, (255, 215, 50), (cx2, by0 + 12), (cx2, by0 + box_h - 12), 3)
 
         # Virtual A-Z keyboard (9 cols x 3 rows)
-        keys_layout = [list("ABCDEFGHI"), list("JKLMNOPQR"), list("STUVWXYZ⌫")]
+        keys_layout = [list("ABCDEFGHI"), list("JKLMNOPQR"), list("STUVWXYZ") + ["<<"]]
         btn_w2, btn_h2 = 50, 42
         btn_gap = 5
         row_w = 9 * btn_w2 + 8 * btn_gap
@@ -1739,7 +1739,7 @@ async def run_game() -> None:
                 kx = kx0 + col_i * (btn_w2 + btn_gap)
                 ky = ky0 + row_i * (btn_h2 + btn_gap)
                 r = pygame.Rect(kx, ky, btn_w2, btn_h2)
-                is_bksp = ch == "⌫"
+                is_bksp = ch == "<<"
                 col = (80, 30, 30) if is_bksp else (55, 52, 40)
                 pygame.draw.rect(screen, col, r, border_radius=6)
                 pygame.draw.rect(screen, (130, 120, 90), r, 1, border_radius=6)
@@ -1753,7 +1753,7 @@ async def run_game() -> None:
         done_col = (50, 110, 60) if entry_initials else (45, 45, 35)
         pygame.draw.rect(screen, done_col, done_r, border_radius=10)
         pygame.draw.rect(screen, (120, 200, 130) if entry_initials else (80, 80, 60), done_r, 2, border_radius=10)
-        done_lbl = small_font.render("✓  DONE", True, (200, 240, 200) if entry_initials else (120, 120, 100))
+        done_lbl = small_font.render("DONE", True, (200, 240, 200) if entry_initials else (120, 120, 100))
         screen.blit(done_lbl, (done_r.centerx - done_lbl.get_width() // 2,
                                 done_r.centery - done_lbl.get_height() // 2))
         new_key_rects.append(("DONE", done_r))
@@ -1925,6 +1925,9 @@ async def run_game() -> None:
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
+                        entering_initials = False
+                        entry_initials = ""
+                        show_help = False
                         phase = "playing"
                 elif phase == "playing":
                     # HUD touch buttons
@@ -1941,7 +1944,7 @@ async def run_game() -> None:
                         if entering_initials:
                             for key_char, key_rect in initials_key_rects:
                                 if key_rect.collidepoint(sx, sy):
-                                    if key_char == "⌫":
+                                    if key_char == "<<":
                                         entry_initials = entry_initials[:-1]
                                     elif key_char == "DONE" and entry_initials:
                                         save_score(state.score, state.level, entry_initials)
@@ -1949,7 +1952,7 @@ async def run_game() -> None:
                                         entering_initials = False
                                         new_high_score = False
                                         scores = load_scores()
-                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "DONE"):
+                                    elif len(entry_initials) < 3 and key_char not in ("<<", "DONE"):
                                         entry_initials += key_char
                                     break
                         elif _tbtn_menu_rect.collidepoint(sx, sy):
@@ -2004,6 +2007,11 @@ async def run_game() -> None:
                     if sys.platform == "emscripten":
                         phase = "title"
                         scores = load_scores()
+                        entering_initials = False
+                        entry_initials = ""
+                        new_high_score = False
+                        score_saved = False
+                        show_help = False
                     else:
                         running = False
                 elif phase == "title":
@@ -2018,6 +2026,9 @@ async def run_game() -> None:
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
+                        entering_initials = False
+                        entry_initials = ""
+                        show_help = False
                         phase = "playing"
                     elif event.key in (pygame.K_LEFT, pygame.K_a):
                         diff_idx = (diff_idx - 1) % len(DIFFICULTIES)
@@ -2112,6 +2123,9 @@ async def run_game() -> None:
                         block_tweens.clear()
                         score_saved = False
                         new_high_score = False
+                        entering_initials = False
+                        entry_initials = ""
+                        show_help = False
                         phase = "playing"
                 elif phase == "playing":
                     if _tbtn_pause_rect.collidepoint(sx, sy):
@@ -2128,7 +2142,7 @@ async def run_game() -> None:
                         if entering_initials:
                             for key_char, key_rect in initials_key_rects:
                                 if key_rect.collidepoint(sx, sy):
-                                    if key_char == "⌫":
+                                    if key_char == "<<":
                                         entry_initials = entry_initials[:-1]
                                     elif key_char == "DONE" and entry_initials:
                                         save_score(state.score, state.level, entry_initials)
@@ -2136,7 +2150,7 @@ async def run_game() -> None:
                                         entering_initials = False
                                         new_high_score = False
                                         scores = load_scores()
-                                    elif len(entry_initials) < 3 and key_char not in ("⌫", "DONE"):
+                                    elif len(entry_initials) < 3 and key_char not in ("<<", "DONE"):
                                         entry_initials += key_char
                                     break
                         elif _tbtn_menu_rect.collidepoint(sx, sy):
@@ -2220,6 +2234,7 @@ async def run_game() -> None:
             if state.respawn_pending and not state.game_over:
                 state.respawn_pending = False
                 countdown_ms = COUNTDOWN_TOTAL_MS
+                cat_ms_accum = 0
             if not state.game_over and countdown_ms <= 0:
                 cat_ms_accum += dt_ms
                 # Levels 1-20: slow ramp (+20ms/level). After 20: steeper ramp (+50ms/level extra).
