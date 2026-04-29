@@ -2040,7 +2040,7 @@ async def run_game() -> None:
                         state.paused = not state.paused
                     elif event.key == pygame.K_h:
                         show_help = not show_help
-                    elif not state.paused and not show_help:
+                    elif not state.paused and not show_help and countdown_ms <= 0:
                         if event.key in (pygame.K_LEFT, pygame.K_a):
                             player_moved = state.handle_player_move(-1, 0)
                             if player_moved:
@@ -2110,7 +2110,7 @@ async def run_game() -> None:
                             score_saved = False
 
         # ---- keyboard auto-repeat for held arrows/WASD ---------------------
-        if phase == "playing" and not state.paused and not show_help and not state.game_over:
+        if phase == "playing" and not state.paused and not show_help and not state.game_over and countdown_ms <= 0:
             # Event-driven held-key tracking is primary; polling is a fallback.
             keys = pygame.key.get_pressed()
             k_left = key_left_held or keys[pygame.K_LEFT] or keys[pygame.K_a]
@@ -2179,7 +2179,11 @@ async def run_game() -> None:
                 countdown_ms = COUNTDOWN_TOTAL_MS
             if not state.game_over and countdown_ms <= 0:
                 cat_ms_accum += dt_ms
-                cat_delay_ms = max(150, CAT_MOVE_DELAY_MS - (state.level - 1) * 20 + state.cat_delay_bonus)
+                # Levels 1-20: slow ramp (+20ms/level). After 20: steeper ramp (+50ms/level extra).
+                _lvl = state.level - 1
+                _base_ramp = min(_lvl, 20) * 20
+                _extra_ramp = max(0, _lvl - 20) * 50
+                cat_delay_ms = max(150, CAT_MOVE_DELAY_MS - _base_ramp - _extra_ramp + state.cat_delay_bonus)
                 if cat_ms_accum >= cat_delay_ms:
                     cat_ms_accum = 0
                     state.step_cats()
