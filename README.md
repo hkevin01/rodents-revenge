@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pygame-ce](https://img.shields.io/badge/pygame--ce-2.5%2B-orange?logo=pygame)](https://pyga.me/)
-[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen?logo=pytest)](tests/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20iPad-lightgrey)](#play-on-ipad--web)
 
@@ -49,12 +49,17 @@ Built with **pygame-ce** and fully playable in a browser on **iPad** via [pygbag
 - [x] **3 difficulty modes** — Easy, Normal, Hard with adjusted cat speed and count
 - [x] **10 hand-designed levels** followed by seeded procedural generation up to level 100+
 - [x] **Multi-trap combo scoring** — trap multiple cats in one move for big bonuses
+- [x] **Diagonal cat movement** — cats can move diagonally, making trapping more challenging
+- [x] **3-2-1-GO countdown** on level start, level-up, and respawn — cats can't move until GO
+- [x] **Cat speed acceleration** — ramps up every level, with steeper acceleration past level 20
 - [x] **Floating virtual joystick** for iPad / touchscreen play
 - [x] **Animated sprites** with graceful fallback to procedural vector art
-- [x] **Persistent high scores** with 3-letter initials (top 10)
+- [x] **Persistent high scores** — top 10 with 3-letter initials, saved per-browser on web
 - [x] **Line-of-sight cat alerts** — orange glow when a cat has a clear shot at you
 - [x] **Block-push tweening** — smooth animation when shoving boxes
 - [x] **Procedural sound effects** — no external audio files needed
+- [x] **Sound toggle** — mute/unmute via the HUD button or `M` key
+- [x] **Polished title screen** — animated PLAY button, high scores panel, difficulty selector
 - [x] **Docker support** for headless CI testing
 
 ---
@@ -134,8 +139,9 @@ python -m pygbag --build src/rodents_revenge
 | `Arrow Keys` / `WASD` | Move the mouse |
 | `P` | Pause / Resume |
 | `H` | Show / hide controls help |
+| `M` | Toggle sound on/off |
 | `R` | Restart *(game-over screen)* |
-| `Enter` | Confirm / back to menu |
+| `Enter` | Confirm / start game / back to menu |
 | `Esc` | Quit *(goes to menu on web)* |
 | `←` / `→` on title screen | Change difficulty |
 
@@ -145,9 +151,11 @@ python -m pygbag --build src/rodents_revenge
 |---|---|
 | Tap left side of screen | Spawn floating joystick there |
 | Drag joystick thumb | Move the mouse (4-way) |
-| Tap **⏸ PAUSE** button | Pause / Resume |
-| Tap **? HELP** button | Toggle controls overlay |
+| Tap **PAUSE** button | Pause / Resume |
+| Tap **HELP** button | Toggle controls overlay |
+| Tap **SND ON / SND OFF** button | Toggle sound |
 | Tap **⬅ MENU** / **↺ RESTART** | Game-over navigation |
+| Tap **DONE** on initials screen | Submit high score initials |
 
 ---
 
@@ -163,13 +171,13 @@ python -m pygbag --build src/rodents_revenge
 
 1. **Move** your mouse with arrow keys or the virtual joystick
 2. **Push blocks** — walk into a block to slide it one cell (only if the cell behind it is free)
-3. **Trap a cat** — surround it on all 4 sides with blocks, walls, or the board edge
+3. **Trap a cat** — surround it on all **8 sides** (including diagonals) with blocks, walls, or the board edge
 4. Trapped cats **turn into cheese** 🧀
 5. **Walk over cheese** to collect it for points
 6. **Clear the level** by trapping all cats
 
 > [!WARNING]
-> Cats move after every step you take! Plan your pushes carefully — a cornered cat is still dangerous if it can reach you first.
+> Cats move diagonally! A cat can slip past a gap you thought was closed. Each new level and every respawn starts with a **3-2-1-GO** countdown — cats don't move until GO.
 
 ---
 
@@ -183,6 +191,8 @@ python -m pygbag --build src/rodents_revenge
 | Multi-trap bonus (per extra cat beyond the first) | +150 |
 
 **Multi-trap example:** Trap 3 cats at once → `3 × 100 + 2 × 150 = 600 pts`
+
+High scores are saved in your **browser (localStorage)** when playing on web, or in `scores.json` locally. Top 10 scores with 3-letter initials are shown on the title screen.
 
 ---
 
@@ -238,13 +248,21 @@ Pure random generation: up to 12 cats and dense block placement. No two runs are
 
 ## Difficulty Modes
 
-Selected on the title screen before starting a game.
+Selected on the title screen before starting a game. Cat base speed is **2000 ms per step** at level 1.
 
-| Mode | Cat Speed Bonus | Cat Count Offset |
+| Mode | Cat Speed | Cat Count |
 |---|---|---|
-| Easy | −3 frames slower | −1 cat |
-| Normal | baseline | baseline |
-| Hard | +2 frames faster | +1 cat |
+| Easy | +250 ms slower (2250 ms base) | −1 cat per level |
+| Normal | baseline (2000 ms base) | baseline |
+| Hard | −125 ms faster (1875 ms base) | +1 cat per level |
+
+### Cat Speed Acceleration
+
+Cat speed increases each level regardless of difficulty:
+
+- **Levels 1–20:** −20 ms per level (e.g. level 10 → 1800 ms)
+- **Levels 21+:** an additional −50 ms per level on top of the base ramp
+- **Floor:** 150 ms minimum (no slower than ~6 steps/sec)
 
 ---
 
@@ -256,10 +274,10 @@ rodents-revenge/
 │   └── rodents_revenge/
 │       ├── game.py          # All game logic, rendering, AI, level gen
 │       ├── main.py          # Entry point — asyncio.run(run_game())
-│       ├── scores.py        # JSON high-score persistence
+│       ├── scores.py        # JSON / localStorage high-score persistence
 │       └── __init__.py
 ├── tests/
-│   └── test_game_logic.py   # 38 pytest tests
+│   └── test_game_logic.py   # 40 pytest tests
 ├── assets/
 │   ├── sprites/             # Optional sprite sheets (CC-BY)
 │   └── docs/ATTRIBUTION.md  # Asset credits
@@ -298,7 +316,7 @@ source .venv/bin/activate
 PYTHONPATH=src python -m pytest -q
 ```
 
-Expected output: **38 passed**
+Expected output: **40 passed**
 
 ---
 
@@ -309,7 +327,6 @@ Contributions are welcome! Here are some ideas:
 - [ ] More hand-crafted levels (extend `LEVEL_PRESETS` in `game.py`)
 - [ ] Additional room themes
 - [ ] Mobile-optimised landscape layout
-- [ ] Sound toggle in HUD
 - [ ] Online leaderboard via a lightweight backend
 
 To contribute:
