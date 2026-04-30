@@ -86,6 +86,117 @@ jobs:
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
           )
 
+            # Brand and polish pygbag loading/start copy.
+            html = html.replace("Loading, please wait ...", "Loading Rodent Rumble...")
+            html = html.replace("Downloading...", "Preparing game files...")
+            html = re.sub(
+              r"Ready to start\s*!\s*Please click/touch page",
+              "Tap anywhere to start",
+              html,
+            )
+
+            # Inject a cleaner loader style without changing pygbag behavior.
+            polished_loader_css = """
+            /* Rodent Rumble loader polish */
+            :root {
+              --rr-bg: radial-gradient(circle at 20% 15%, #2f2617 0%, #18130c 45%, #090806 100%);
+              --rr-panel: rgba(16, 13, 9, 0.86);
+              --rr-panel-border: rgba(210, 176, 84, 0.5);
+              --rr-gold: #f0cf7a;
+              --rr-muted: #cdb989;
+              --rr-track: rgba(255, 255, 255, 0.12);
+              --rr-fill: linear-gradient(90deg, #5cc37a 0%, #99db7d 100%);
+            }
+
+            body {
+              font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+              background: var(--rr-bg) !important;
+              color: var(--rr-muted);
+            }
+
+            #transfer {
+              position: fixed;
+              left: 50%;
+              top: 50%;
+              transform: translate(-50%, -50%);
+              width: min(88vw, 560px);
+              padding: 20px 22px 18px;
+              border-radius: 14px;
+              border: 1px solid var(--rr-panel-border);
+              background: var(--rr-panel);
+              box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+              backdrop-filter: blur(3px);
+              z-index: 8;
+            }
+
+            #status {
+              margin: 0 0 12px;
+              display: block;
+              color: var(--rr-gold);
+              font-size: 18px;
+              font-weight: 700;
+              letter-spacing: 0.02em;
+              text-align: center;
+            }
+
+            #progress {
+              width: 100%;
+              height: 14px;
+              border: none;
+              border-radius: 999px;
+              overflow: hidden;
+              background: var(--rr-track);
+            }
+
+            #progress::-webkit-progress-bar {
+              background: var(--rr-track);
+              border-radius: 999px;
+            }
+
+            #progress::-webkit-progress-value {
+              background: var(--rr-fill);
+              border-radius: 999px;
+            }
+
+            #progress::-moz-progress-bar {
+              background: var(--rr-fill);
+              border-radius: 999px;
+            }
+
+            #infobox {
+              position: fixed;
+              left: 50%;
+              bottom: 5vh;
+              transform: translateX(-50%);
+              width: min(90vw, 520px);
+              background: rgba(10, 8, 6, 0.84) !important;
+              color: #e8d7ac !important;
+              border: 1px solid rgba(210, 176, 84, 0.38);
+              border-radius: 12px;
+              font-size: 15px;
+              font-weight: 700;
+              text-align: center;
+              letter-spacing: 0.02em;
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+              padding: 10px 14px;
+              z-index: 10;
+            }
+
+            @media (orientation: landscape) {
+              #transfer {
+                top: 52%;
+                width: min(74vw, 640px);
+              }
+
+              #infobox {
+                bottom: 3.5vh;
+                width: min(68vw, 620px);
+              }
+            }
+            """
+            if "Rodent Rumble loader polish" not in html:
+              html = html.replace("</style>", f"\n{polished_loader_css}\n</style>", 1)
+
           short_sha = os.environ.get("SHORT_SHA", "?")
           print(f"Sanitized index.html for build {short_sha}")
           index_path.write_text(html, encoding="utf-8")
