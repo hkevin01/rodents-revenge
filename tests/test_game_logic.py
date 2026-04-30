@@ -429,16 +429,16 @@ def test_level_6_wall_paths_are_connected_from_mouse_spawn() -> None:
 
 def test_handcrafted_levels_use_lighter_wall_budgets() -> None:
     expected_limits = {
-        1: 11,
-        2: 18,
-        3: 22,
-        4: 22,
-        5: 24,
-        6: 26,
-        7: 28,
-        8: 28,
-        9: 32,
-        10: 34,
+        1: 10,
+        2: 14,
+        3: 18,
+        4: 18,
+        5: 20,
+        6: 22,
+        7: 24,
+        8: 24,
+        9: 28,
+        10: 30,
     }
 
     for level, limit in expected_limits.items():
@@ -449,7 +449,14 @@ def test_handcrafted_levels_use_lighter_wall_budgets() -> None:
             for x in range(1, state.width - 1)
             if state.board[y][x] == WALL
         )
+        block_count = sum(
+            1
+            for y in range(1, state.height - 1)
+            for x in range(1, state.width - 1)
+            if state.board[y][x] == BLOCK
+        )
         assert wall_count <= limit
+        assert block_count > wall_count
 
 
 # ---------- new feature tests ----------

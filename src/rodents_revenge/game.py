@@ -436,8 +436,8 @@ class GameState:
             return
 
         # Procedural fallback (extreme levels or seeded generation failed)
-        wall_count = min(4 + level, 18)
-        block_count = min(50 + level * 8, 200)
+        wall_count = min(3 + level // 2, 10)
+        block_count = min(64 + level * 10, 220)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
         self.last_block_push = None
         self.near_clear_warned = False
@@ -507,16 +507,16 @@ class GameState:
     ) -> None:
         """Reduce dense handcrafted wall clusters so preset levels stay more open."""
         target_walls = {
-            1: 11,
-            2: 18,
-            3: 22,
-            4: 22,
-            5: 24,
-            6: 26,
-            7: 28,
-            8: 28,
-            9: 32,
-            10: 34,
+            1: 10,
+            2: 14,
+            3: 18,
+            4: 18,
+            5: 20,
+            6: 22,
+            7: 24,
+            8: 24,
+            9: 28,
+            10: 30,
         }.get(level)
         if target_walls is None:
             return
@@ -575,7 +575,12 @@ class GameState:
                     min((abs(cell[0] - px) + abs(cell[1] - py) for px, py in protected), default=99),
                 ),
             )
-            self.board[remove_y][remove_x] = EMPTY
+            # Prefer converting dense fixed walls into pushable boxes so the map
+            # stays interactive rather than simply emptier.
+            if wall_neighbors((remove_x, remove_y)) >= 4:
+                self.board[remove_y][remove_x] = BLOCK
+            else:
+                self.board[remove_y][remove_x] = EMPTY
             current_walls -= 1
 
     def restart_game(self) -> None:
@@ -981,8 +986,8 @@ class GameState:
             return False
 
         tier = min((level - 11) // 10, 9)
-        tier_wall_segs  = (3, 4, 4, 5, 5, 6, 6, 7, 7, 8)
-        tier_block_cnt  = (38, 42, 46, 50, 54, 58, 62, 66, 70, 74)
+        tier_wall_segs  = (2, 3, 3, 4, 4, 5, 5, 6, 6, 7)
+        tier_block_cnt  = (46, 50, 54, 58, 62, 66, 70, 74, 78, 82)
         tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
         tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
 
