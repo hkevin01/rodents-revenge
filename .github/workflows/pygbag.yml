@@ -96,7 +96,13 @@ jobs:
           )
           html = html.replace(
               '        msg  = "Ready to start ! Please click/touch page"\n        platform.window.infobox.innerText = msg',
-              '        msg  = "🐭 Rodent Rumble\\nTap anywhere to start"\n        platform.window.infobox.innerText = msg\n        platform.window.infobox.style.left = "50%"\n        platform.window.infobox.style.top = "50%"\n        platform.window.infobox.style.bottom = "auto"\n        platform.window.infobox.style.transform = "translate(-50%, -50%)"',
+              '        msg  = "Tap anywhere to start"\n        platform.window.infobox.innerHTML = "<div class=\"rr-start-icon\">🐭</div><div class=\"rr-start-title\">Rodent Rumble</div><div class=\"rr-start-cta\">Tap anywhere to start</div>"\n        platform.window.infobox.style.display = "grid"\n        platform.window.infobox.style.placeItems = "center"\n        platform.window.infobox.style.left = "50%"\n        platform.window.infobox.style.top = "50%"\n        platform.window.infobox.style.bottom = "auto"\n        platform.window.infobox.style.transform = "translate(-50%, -50%)"',
+          )
+          html = re.sub(
+              r"function show_infobox\(\) \{.*?\n\}",
+              '''function show_infobox() {\n    infobox.style.display = "grid";\n    infobox.style.placeItems = "center";\n    infobox.style.left = "50%";\n    infobox.style.top = "50%";\n    infobox.style.bottom = "auto";\n    infobox.style.transform = "translate(-50%, -50%)";\n}\n''',
+              html,
+              flags=re.S,
           )
 
           # Inject a cleaner loader style without changing pygbag behavior.
@@ -174,18 +180,42 @@ jobs:
             bottom: auto;
             transform: translate(-50%, -50%);
             width: min(90vw, 520px);
+            min-height: 132px;
             background: rgba(10, 8, 6, 0.84) !important;
             color: #e8d7ac !important;
             border: 1px solid rgba(210, 176, 84, 0.38);
             border-radius: 12px;
             font-size: 15px;
             font-weight: 700;
+            display: grid;
+            place-items: center;
             text-align: center;
             white-space: pre-line;
             letter-spacing: 0.02em;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            padding: 10px 14px;
+            padding: 18px 18px 16px;
             z-index: 10;
+          }
+
+          .rr-start-icon {
+            font-size: 34px;
+            line-height: 1;
+            margin-bottom: 6px;
+          }
+
+          .rr-start-title {
+            color: var(--rr-gold);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+          }
+
+          .rr-start-cta {
+            color: #eadcb5;
+            font-size: 16px;
+            font-weight: 700;
           }
 
           @media (orientation: landscape) {

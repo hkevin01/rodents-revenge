@@ -46,12 +46,14 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 72          # outer ring radius in pixels
+VJOY_RADIUS = 76          # outer ring radius in pixels
 VJOY_THUMB_R = 28         # movable thumb circle radius
-VJOY_DEADZONE = 28        # larger deadzone reduces accidental tiny drags on touch screens
-VJOY_INITIAL_DELAY = 14   # wait longer before stick-hold auto-repeat starts
-VJOY_REPEAT_EVERY = 7     # slower repeat cadence while holding a direction
-VJOY_FLOAT = True         # joystick floats to first-touch position
+VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
+VJOY_INITIAL_DELAY = 8    # quicker hold repeat ramp to match mobile joystick expectations
+VJOY_REPEAT_EVERY = 4     # faster repeat cadence while holding a direction
+VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
+VJOY_TOUCH_RADIUS = 124   # generous invisible touch catch zone around the stick
+VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
@@ -1386,12 +1388,37 @@ async def run_game() -> None:
         except Exception:
             return int(nx * SCREEN_WIDTH), int(ny * SCREEN_HEIGHT)
 
-    def _vjoy_dir(offset: tuple[float, float]) -> tuple[int, int]:
-        """Map joystick displacement to the nearest 4-way grid direction."""
+    def _clamp_vjoy_offset(offset: tuple[float, float]) -> tuple[float, float]:
+        """Clamp joystick thumb travel to the visible ring radius."""
         ox, oy = offset
+        dist = math.hypot(ox, oy)
+        max_dist = VJOY_RADIUS - VJOY_THUMB_R - 4
+        if dist > max_dist and dist > 0:
+            scale = max_dist / dist
+            return ox * scale, oy * scale
+        return ox, oy
+
+    def _vjoy_dir(offset: tuple[float, float], previous_dir: tuple[int, int] = (0, 0)) -> tuple[int, int]:
+        """Map joystick displacement to a stable 4-way grid direction."""
+        ox, oy = _clamp_vjoy_offset(offset)
+        abs_x = abs(ox)
+        abs_y = abs(oy)
         if math.hypot(ox, oy) < VJOY_DEADZONE:
             return (0, 0)
-        if abs(ox) >= abs(oy):
+
+        if abs_x > abs_y * VJOY_AXIS_LOCK_RATIO:
+            return (1 if ox > 0 else -1, 0)
+        if abs_y > abs_x * VJOY_AXIS_LOCK_RATIO:
+            return (0, 1 if oy > 0 else -1)
+
+        # When the thumb sits near a diagonal boundary, prefer the previous axis
+        # to avoid left/right or up/down jitter while the player is holding.
+        if previous_dir[0] != 0 and abs_x >= VJOY_DEADZONE * 0.85:
+            return (1 if ox > 0 else -1, 0)
+        if previous_dir[1] != 0 and abs_y >= VJOY_DEADZONE * 0.85:
+            return (0, 1 if oy > 0 else -1)
+
+        if abs_x >= abs_y:
             return (1 if ox > 0 else -1, 0)
         return (0, 1 if oy > 0 else -1)
 
@@ -1790,19 +1817,14 @@ async def run_game() -> None:
             (0,  1): [(sc - 6, sc + pip_r - 6), (sc, sc + pip_r + 6), (sc + 6, sc + pip_r - 6)],
             (0, -1): [(sc - 6, sc - pip_r + 6), (sc, sc - pip_r - 6), (sc + 6, sc - pip_r + 6)],
         }
-        cur_dir = _vjoy_dir(vjoy_offset) if vjoy_active else (0, 0)
+        cur_dir = _vjoy_dir(vjoy_offset, vjoy_last_dir) if vjoy_active else (0, 0)
         for d, pts in arrow_pts.items():
             alpha = 230 if d == cur_dir else 110
             pygame.draw.polygon(joy_surf, (255, 255, 255, alpha), pts)
 
         # Thumb circle — clamped to ring travel area when active
         if vjoy_active:
-            ox, oy = vjoy_offset
-            dist = math.hypot(ox, oy)
-            max_dist = VJOY_RADIUS - VJOY_THUMB_R - 4
-            if dist > max_dist and dist > 0:
-                ox = ox * max_dist / dist
-                oy = oy * max_dist / dist
+            ox, oy = _clamp_vjoy_offset(vjoy_offset)
             tx, ty = sc + int(ox), sc + int(oy)
             pygame.draw.circle(joy_surf, (255, 255, 255, 190), (tx, ty), VJOY_THUMB_R)
             pygame.draw.circle(joy_surf, (255, 255, 255, 255), (tx, ty), VJOY_THUMB_R, 3)
@@ -2101,20 +2123,30 @@ async def run_game() -> None:
                     elif show_help:
                         show_help = False
                     else:
-                        # Floating joystick — spawn at touch point (left 60% of screen)
-                        if sx < SCREEN_WIDTH * 3 // 5 and not vjoy_active:
-                            # Float to touch position, clamped away from edges
-                            vjoy_cx = max(VJOY_RADIUS + 10, min(sx, SCREEN_WIDTH * 3 // 5 - VJOY_RADIUS - 10))
-                            vjoy_cy = max(VJOY_RADIUS + HUD_HEIGHT + 10, min(sy, SCREEN_HEIGHT - VJOY_RADIUS - 10))
+                        # Virtual joystick — fixed bottom-left by default for a
+                        # more standard mobile layout, with optional floating mode.
+                        _touch_ok = False
+                        if VJOY_FLOAT:
+                            _touch_ok = sx < SCREEN_WIDTH * 3 // 5
+                        else:
+                            _touch_ok = math.hypot(sx - _vjoy_default_cx, sy - _vjoy_default_cy) <= VJOY_TOUCH_RADIUS
+
+                        if _touch_ok and not vjoy_active:
+                            if VJOY_FLOAT:
+                                vjoy_cx = max(VJOY_RADIUS + 10, min(sx, SCREEN_WIDTH * 3 // 5 - VJOY_RADIUS - 10))
+                                vjoy_cy = max(VJOY_RADIUS + HUD_HEIGHT + 10, min(sy, SCREEN_HEIGHT - VJOY_RADIUS - 10))
+                            else:
+                                vjoy_cx = _vjoy_default_cx
+                                vjoy_cy = _vjoy_default_cy
                             vjoy_active = True
                             vjoy_finger_id = event.finger_id
-                            vjoy_offset = (0.0, 0.0)
+                            vjoy_offset = _clamp_vjoy_offset((float(sx - vjoy_cx), float(sy - vjoy_cy)))
                             vjoy_last_dir = (0, 0)
                             vjoy_held_frames = 0
             elif event.type == pygame.FINGERMOTION:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
                     sx, sy = _touch_to_screen(event.x, event.y)
-                    vjoy_offset = (float(sx - vjoy_cx), float(sy - vjoy_cy))
+                    vjoy_offset = _clamp_vjoy_offset((float(sx - vjoy_cx), float(sy - vjoy_cy)))
             elif event.type == pygame.FINGERUP:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
                     vjoy_active = False
@@ -2331,7 +2363,7 @@ async def run_game() -> None:
 
         # ---- virtual joystick auto-repeat (runs every frame while held) -----
         if vjoy_active and phase == "playing":
-            d = _vjoy_dir(vjoy_offset)
+            d = _vjoy_dir(vjoy_offset, vjoy_last_dir)
             if d != (0, 0):
                 if d != vjoy_last_dir:
                     # New direction — move immediately, reset hold counter
