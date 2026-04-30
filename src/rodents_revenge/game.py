@@ -48,9 +48,9 @@ GAME_TITLE = "Rodent Rumble"
 # --- Virtual joystick (touch / iPad) ---
 VJOY_RADIUS = 72          # outer ring radius in pixels
 VJOY_THUMB_R = 28         # movable thumb circle radius
-VJOY_DEADZONE = 18        # pixels inside which input is ignored
-VJOY_INITIAL_DELAY = 10   # frames before auto-repeat kicks in
-VJOY_REPEAT_EVERY = 5     # frames between repeated moves while held
+VJOY_DEADZONE = 28        # larger deadzone reduces accidental tiny drags on touch screens
+VJOY_INITIAL_DELAY = 14   # wait longer before stick-hold auto-repeat starts
+VJOY_REPEAT_EVERY = 7     # slower repeat cadence while holding a direction
 VJOY_FLOAT = True         # joystick floats to first-touch position
 
 # Keyboard hold repeat (matches virtual joystick feel)
