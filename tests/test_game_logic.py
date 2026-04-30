@@ -427,6 +427,31 @@ def test_level_6_wall_paths_are_connected_from_mouse_spawn() -> None:
     assert visited == open_cells
 
 
+def test_handcrafted_levels_use_lighter_wall_budgets() -> None:
+    expected_limits = {
+        1: 11,
+        2: 18,
+        3: 22,
+        4: 22,
+        5: 24,
+        6: 26,
+        7: 28,
+        8: 28,
+        9: 32,
+        10: 34,
+    }
+
+    for level, limit in expected_limits.items():
+        state = GameState(level=level)
+        wall_count = sum(
+            1
+            for y in range(1, state.height - 1)
+            for x in range(1, state.width - 1)
+            if state.board[y][x] == WALL
+        )
+        assert wall_count <= limit
+
+
 # ---------- new feature tests ----------
 
 def test_cat_in_same_row_no_wall_is_line_of_sight() -> None:

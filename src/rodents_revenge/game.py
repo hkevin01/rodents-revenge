@@ -436,7 +436,7 @@ class GameState:
             return
 
         # Procedural fallback (extreme levels or seeded generation failed)
-        wall_count = min(8 + level * 2, 40)
+        wall_count = min(4 + level, 18)
         block_count = min(50 + level * 8, 200)
         cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
         self.last_block_push = None
@@ -478,6 +478,8 @@ class GameState:
                 elif ch == "X":
                     cat_spawns.append((x, y))
 
+        self._thin_preset_walls(level, mouse_spawn, cat_spawns)
+
         self.last_block_push = None
         self.near_clear_warned = False
 
@@ -496,6 +498,85 @@ class GameState:
             self.cats.append(self._find_free_cell(min_distance_from=self.mouse_pos, min_distance=5))
 
         return True
+
+    def _thin_preset_walls(
+        self,
+        level: int,
+        mouse_spawn: tuple[int, int] | None,
+        cat_spawns: list[tuple[int, int]],
+    ) -> None:
+        """Reduce dense handcrafted wall clusters so preset levels stay more open."""
+        target_walls = {
+            1: 11,
+            2: 18,
+            3: 22,
+            4: 22,
+            5: 24,
+            6: 26,
+            7: 28,
+            8: 28,
+            9: 32,
+            10: 34,
+        }.get(level)
+        if target_walls is None:
+            return
+
+        protected = set(cat_spawns)
+        if mouse_spawn is not None:
+            protected.add(mouse_spawn)
+
+        for y in range(1, self.height - 1):
+            for x in range(1, self.width - 1):
+                if self.board[y][x] in (BLOCK, CHEESE):
+                    protected.add((x, y))
+
+        current_walls = sum(
+            1
+            for y in range(1, self.height - 1)
+            for x in range(1, self.width - 1)
+            if self.board[y][x] == WALL
+        )
+        if current_walls <= target_walls:
+            return
+
+        dirs8 = (
+            (1, 0), (-1, 0), (0, 1), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+        )
+
+        def is_protected(cell: tuple[int, int]) -> bool:
+            cx, cy = cell
+            return any(abs(cx - px) <= 1 and abs(cy - py) <= 1 for px, py in protected)
+
+        def wall_neighbors(cell: tuple[int, int]) -> int:
+            cx, cy = cell
+            return sum(
+                1
+                for dx, dy in dirs8
+                if self.in_bounds(cx + dx, cy + dy) and self.board[cy + dy][cx + dx] == WALL
+            )
+
+        while current_walls > target_walls:
+            candidates = [
+                (x, y)
+                for y in range(1, self.height - 1)
+                for x in range(1, self.width - 1)
+                if self.board[y][x] == WALL and not is_protected((x, y))
+            ]
+            if not candidates:
+                break
+
+            dense = [cell for cell in candidates if wall_neighbors(cell) >= 3]
+            pool = dense or candidates
+            remove_x, remove_y = max(
+                pool,
+                key=lambda cell: (
+                    wall_neighbors(cell),
+                    min((abs(cell[0] - px) + abs(cell[1] - py) for px, py in protected), default=99),
+                ),
+            )
+            self.board[remove_y][remove_x] = EMPTY
+            current_walls -= 1
 
     def restart_game(self) -> None:
         self.score = 0
@@ -900,7 +981,7 @@ class GameState:
             return False
 
         tier = min((level - 11) // 10, 9)
-        tier_wall_segs  = (4, 5, 5, 6, 6, 7, 7, 8, 8, 9)
+        tier_wall_segs  = (3, 4, 4, 5, 5, 6, 6, 7, 7, 8)
         tier_block_cnt  = (38, 42, 46, 50, 54, 58, 62, 66, 70, 74)
         tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
         tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
