@@ -135,6 +135,43 @@ def test_single_trap_no_combo_bonus() -> None:
     assert state.score == TRAP_SCORE + 300  # no combo bonus
 
 
+def test_two_adjacent_enclosed_cats_turn_to_cheese() -> None:
+    state = blank_state()
+    cats = [(4, 4), (5, 4)]
+    state.cats = cats[:]
+
+    # Enclose the 2-cat cluster; cats only touch each other and cannot escape.
+    for y in range(3, 6):
+        for x in range(3, 7):
+            if (x, y) not in cats:
+                state.board[y][x] = BLOCK
+
+    state.step_cats()
+
+    assert state.cats == []
+    assert state.board[4][4] == CHEESE
+    assert state.board[4][5] == CHEESE
+
+
+def test_three_adjacent_enclosed_cats_turn_to_cheese() -> None:
+    state = blank_state()
+    cats = [(3, 4), (4, 4), (5, 4)]
+    state.cats = cats[:]
+
+    # Enclose the 3-cat cluster; no external move exists.
+    for y in range(3, 6):
+        for x in range(2, 7):
+            if (x, y) not in cats:
+                state.board[y][x] = BLOCK
+
+    state.step_cats()
+
+    assert state.cats == []
+    assert state.board[4][3] == CHEESE
+    assert state.board[4][4] == CHEESE
+    assert state.board[4][5] == CHEESE
+
+
 def test_save_and_load_scores(tmp_path, monkeypatch) -> None:
     import rodents_revenge.scores as scores_mod
 

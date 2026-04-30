@@ -587,8 +587,8 @@ class GameState:
     def _resolve_trapped_cats(self) -> None:
         # First pass: identify all trapped cats against the current board
         # (do NOT modify the board yet, so each cat is evaluated fairly)
-        trapped = [cat for cat in self.cats if self.is_cat_trapped(*cat)]
-        trap_set = set(trapped)
+        trap_set = self._trapped_cat_set()
+        trapped = [cat for cat in self.cats if cat in trap_set]
         # Second pass: convert all trapped cats to cheese at once
         for cx, cy in trapped:
             self.board[cy][cx] = CHEESE
@@ -610,23 +610,67 @@ class GameState:
             self.pending_sounds.append("clear")
 
     def is_cat_trapped(self, x: int, y: int) -> bool:
+        return (x, y) in self._trapped_cat_set()
+
+    def _trapped_cat_set(self) -> set[tuple[int, int]]:
+        """Return all cats that are trapped, including enclosed cat groups.
+
+        Cats are evaluated in 8-way connected components. A component is trapped
+        only when no cat in that component has any 8-neighbor escape cell.
+        """
         dirs8 = (
             (1, 0), (-1, 0), (0, 1), (0, -1),
             (1, 1), (1, -1), (-1, 1), (-1, -1),
         )
-        for dx, dy in dirs8:
-            nx, ny = x + dx, y + dy
-            if not self.in_bounds(nx, ny):
+        cat_set = set(self.cats)
+        if not cat_set:
+            return set()
+
+        trapped: set[tuple[int, int]] = set()
+        seen: set[tuple[int, int]] = set()
+
+        for start in cat_set:
+            if start in seen:
                 continue
-            if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
-                continue
-            if (nx, ny) == self.mouse_pos:
-                return False
-            if self._cat_at(nx, ny):
-                return False
-            # Cell is genuinely reachable and open → not trapped
-            return False
-        return True
+
+            # Collect one 8-connected cat component.
+            comp: set[tuple[int, int]] = {start}
+            stack = [start]
+            seen.add(start)
+            while stack:
+                cx, cy = stack.pop()
+                for dx, dy in dirs8:
+                    nx, ny = cx + dx, cy + dy
+                    nb = (nx, ny)
+                    if nb in cat_set and nb not in seen:
+                        seen.add(nb)
+                        comp.add(nb)
+                        stack.append(nb)
+
+            # A component is not trapped if any cat has at least one open
+            # neighboring cell that is not blocked by terrain, cheese, mouse, or cats.
+            has_escape = False
+            for cx, cy in comp:
+                for dx, dy in dirs8:
+                    nx, ny = cx + dx, cy + dy
+                    if not self.in_bounds(nx, ny):
+                        continue
+                    nb = (nx, ny)
+                    if nb in cat_set:
+                        continue
+                    if nb == self.mouse_pos:
+                        continue
+                    if self.board[ny][nx] in (BLOCK, WALL, CHEESE):
+                        continue
+                    has_escape = True
+                    break
+                if has_escape:
+                    break
+
+            if not has_escape:
+                trapped.update(comp)
+
+        return trapped
 
     def _lose_life(self, cat_pos: tuple[int, int] | None = None) -> None:
         self.lives -= 1
@@ -838,10 +882,9 @@ class GameState:
         if reachable < 12:
             return False
 
-        # No cat may start already trapped
-        for cat in self.cats:
-            if self.is_cat_trapped(*cat):
-                return False
+        # No cat group may start already trapped
+        if self._trapped_cat_set():
+            return False
 
         return True
 
@@ -1480,7 +1523,7 @@ async def run_game() -> None:
                                  (body_cx + sx_off, cb_r.top + 2),
                                  (body_cx + sx_off, cb_r.bottom - 2), 2)
             # Ear: pointy triangle on top of head, toward BACK, fully within head circle
-            ear_bx = ch_cx - cat_fx * (ch_r // 2)  # half-radius back from head center
+            ear_bx = ch_cx - cat_fx * max(2, ch_r // 3)  # keep ear on back side but closer to head center
             ear_by = ch_cy - ch_r + 1      # near head top
             ear_tip = (ear_bx, ear_by - 9)
             ear_base_l = (ear_bx - 4, ear_by)
