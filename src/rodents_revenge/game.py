@@ -46,13 +46,13 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 76          # outer ring radius in pixels
-VJOY_THUMB_R = 28         # movable thumb circle radius
+VJOY_RADIUS = 82          # slightly larger ring fits tablet thumbs better
+VJOY_THUMB_R = 30         # larger thumb knob improves touch acquisition
 VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
 VJOY_INITIAL_DELAY = 8    # quicker hold repeat ramp to match mobile joystick expectations
 VJOY_REPEAT_EVERY = 4     # faster repeat cadence while holding a direction
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 124   # generous invisible touch catch zone around the stick
+VJOY_TOUCH_RADIUS = 144   # generous invisible touch catch zone around the stick
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 
 # Keyboard hold repeat (matches virtual joystick feel)
@@ -1329,8 +1329,8 @@ async def run_game() -> None:
 
     # --- Virtual joystick touch state ---
     # Floats to wherever the player first touches (left half of screen)
-    _vjoy_default_cx = VJOY_RADIUS + 30
-    _vjoy_default_cy = SCREEN_HEIGHT - VJOY_RADIUS - 30
+    _vjoy_default_cx = VJOY_RADIUS + 44
+    _vjoy_default_cy = SCREEN_HEIGHT - VJOY_RADIUS - 42
     vjoy_cx = _vjoy_default_cx
     vjoy_cy = _vjoy_default_cy
     vjoy_active = False

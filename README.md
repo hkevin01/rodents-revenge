@@ -84,7 +84,7 @@ https://hkevin01.github.io/rodents-revenge/
 The workflow at [.github/workflows/pygbag.yml](.github/workflows/pygbag.yml) builds and deploys automatically on every push to `main`.
 
 > [!TIP]
-> On iPad, tap the **left side of the screen** to spawn the floating virtual joystick. The game detects touch automatically — no special mode needed.
+> On iPad and phones, use the fixed virtual joystick in the **bottom-left corner**. The game detects touch automatically — no special mode needed.
 
 ---
 
@@ -149,7 +149,7 @@ python -m pygbag --build src/rodents_revenge
 
 | Gesture | Action |
 |---|---|
-| Tap left side of screen | Spawn floating joystick there |
+| Drag bottom-left joystick | Move the mouse (4-way) |
 | Drag joystick thumb | Move the mouse (4-way) |
 | Tap **PAUSE** button | Pause / Resume |
 | Tap **HELP** button | Toggle controls overlay |
