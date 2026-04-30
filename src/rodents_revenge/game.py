@@ -1200,6 +1200,21 @@ async def run_game() -> None:
     if sys.platform == "emscripten":
         import platform  # type: ignore[import]
         platform.window.canvas.style.imageRendering = "pixelated"
+        # Fill the mobile viewport in landscape and reduce browser gesture interference.
+        try:
+            canvas = platform.window.canvas
+            canvas.style.width = "100vw"
+            canvas.style.height = "100vh"
+            canvas.style.maxWidth = "100vw"
+            canvas.style.maxHeight = "100vh"
+            canvas.style.objectFit = "contain"
+            canvas.style.display = "block"
+            canvas.style.touchAction = "none"
+            platform.window.document.body.style.margin = "0"
+            platform.window.document.body.style.overflow = "hidden"
+            platform.window.document.body.style.background = "#000"
+        except Exception:
+            pass
     pygame.display.set_icon(_make_icon())
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 24, bold=True)
@@ -1292,6 +1307,40 @@ async def run_game() -> None:
     _tbtn_menu_rect    = pygame.Rect(0, 0, 160, 64)
     _tbtn_restart_rect = pygame.Rect(0, 0, 160, 64)
     _tbtn_resume_rect  = pygame.Rect(0, 0, 200, 64)
+
+    def _touch_to_screen(nx: float, ny: float) -> tuple[int, int]:
+        """Map normalized touch coords to logical screen coords, compensating for mobile letterboxing."""
+        if sys.platform != "emscripten":
+            return int(nx * SCREEN_WIDTH), int(ny * SCREEN_HEIGHT)
+        try:
+            import platform  # type: ignore[import]
+
+            vw = float(platform.window.innerWidth)
+            vh = float(platform.window.innerHeight)
+            if vw <= 1 or vh <= 1:
+                return int(nx * SCREEN_WIDTH), int(ny * SCREEN_HEIGHT)
+
+            px = nx * vw
+            py = ny * vh
+            game_aspect = SCREEN_WIDTH / SCREEN_HEIGHT
+            view_aspect = vw / vh
+
+            if view_aspect > game_aspect:
+                content_h = vh
+                content_w = vh * game_aspect
+                pad_x = (vw - content_w) * 0.5
+                sx = int((px - pad_x) * (SCREEN_WIDTH / content_w))
+                sy = int(py * (SCREEN_HEIGHT / content_h))
+            else:
+                content_w = vw
+                content_h = vw / game_aspect
+                pad_y = (vh - content_h) * 0.5
+                sx = int(px * (SCREEN_WIDTH / content_w))
+                sy = int((py - pad_y) * (SCREEN_HEIGHT / content_h))
+
+            return max(0, min(SCREEN_WIDTH - 1, sx)), max(0, min(SCREEN_HEIGHT - 1, sy))
+        except Exception:
+            return int(nx * SCREEN_WIDTH), int(ny * SCREEN_HEIGHT)
 
     def _vjoy_dir(offset: tuple[float, float]) -> tuple[int, int]:
         """Map joystick displacement to the nearest 4-way grid direction."""
@@ -1899,8 +1948,7 @@ async def run_game() -> None:
             # ---- keyboard quit (skip ESC-to-quit on web) --------------------
             # ---- touch finger events ----------------------------------------
             elif event.type == pygame.FINGERDOWN:
-                sx = int(event.x * SCREEN_WIDTH)
-                sy = int(event.y * SCREEN_HEIGHT)
+                sx, sy = _touch_to_screen(event.x, event.y)
                 if phase == "title":
                     # Difficulty buttons — three distinct rects in bottom strip
                     btn_w2, btn_h2 = 158, 62
@@ -1987,8 +2035,7 @@ async def run_game() -> None:
                             vjoy_held_frames = 0
             elif event.type == pygame.FINGERMOTION:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
-                    sx = int(event.x * SCREEN_WIDTH)
-                    sy = int(event.y * SCREEN_HEIGHT)
+                    sx, sy = _touch_to_screen(event.x, event.y)
                     vjoy_offset = (float(sx - vjoy_cx), float(sy - vjoy_cy))
             elif event.type == pygame.FINGERUP:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
