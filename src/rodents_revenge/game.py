@@ -1611,14 +1611,40 @@ async def run_game() -> None:
             state.trap_combo_flash -= 1
 
         if state.level_clear_delay > 0:
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 80))
-            screen.blit(overlay, (0, 0))
+            _lc_ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            _lc_ov.fill((0, 0, 0, 160))
+            screen.blit(_lc_ov, (0, 0))
+            _lcx = SCREEN_WIDTH // 2
+            _lcy = SCREEN_HEIGHT // 2
             next_level = state.level + 1
-            lvl_surf = title_font.render(f"Level {next_level}", True, colors["levelup"])
-            msg = font.render("Get ready...", True, colors["text"])
-            screen.blit(lvl_surf, (SCREEN_WIDTH // 2 - lvl_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 48))
-            screen.blit(msg,      (SCREEN_WIDTH // 2 - msg.get_width()      // 2, SCREEN_HEIGHT // 2 + 4))
+            # Big level number with shadow + glow
+            _lc_num = big_title_font.render(f"LEVEL  {next_level}", True, (255, 230, 80))
+            _lc_shd = big_title_font.render(f"LEVEL  {next_level}", True, (0, 0, 0))
+            for _dxy in ((-2, 2), (2, 2), (0, 4)):
+                _tmp = big_title_font.render(f"LEVEL  {next_level}", True, (0, 0, 0))
+                _tmp.set_alpha(100)
+                screen.blit(_tmp, (_lcx - _lc_num.get_width() // 2 + _dxy[0], _lcy - 44 + _dxy[1]))
+            screen.blit(_lc_num, (_lcx - _lc_num.get_width() // 2, _lcy - 44))
+            # Decorative separator line
+            _sep_hw = 160
+            pygame.draw.line(screen, (100, 92, 56), (_lcx - _sep_hw, _lcy + 24), (_lcx - 10, _lcy + 24), 1)
+            pygame.draw.circle(screen, (200, 180, 80), (_lcx, _lcy + 24), 5)
+            pygame.draw.line(screen, (100, 92, 56), (_lcx + 10, _lcy + 24), (_lcx + _sep_hw, _lcy + 24), 1)
+            # Get ready text + difficulty badge
+            _rdy = font.render("Get Ready...", True, (190, 178, 135))
+            screen.blit(_rdy, (_lcx - _rdy.get_width() // 2, _lcy + 36))
+            _diff_name = DIFFICULTIES[diff_idx].upper()
+            _diff_badge_cols = {"EASY": (36, 120, 46), "NORMAL": (38, 40, 120), "HARD": (130, 28, 28)}
+            _diff_txt_cols  = {"EASY": (130, 240, 148), "NORMAL": (188, 186, 255), "HARD": (255, 138, 128)}
+            _db_col = _diff_badge_cols.get(_diff_name, (80, 78, 50))
+            _dt_col = _diff_txt_cols.get(_diff_name, (200, 190, 140))
+            _db_surf = small_font.render(_diff_name, True, _dt_col)
+            _db_rect = pygame.Rect(0, 0, _db_surf.get_width() + 24, _db_surf.get_height() + 10)
+            _db_rect.center = (_lcx, _lcy + 74)
+            pygame.draw.rect(screen, _db_col, _db_rect, border_radius=8)
+            pygame.draw.rect(screen, _dt_col, _db_rect, 1, border_radius=8)
+            screen.blit(_db_surf, (_db_rect.centerx - _db_surf.get_width() // 2,
+                                   _db_rect.centery - _db_surf.get_height() // 2))
 
         if state.respawn_flash > 0 and (state.respawn_flash // 6) % 2 == 0:
             flash = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -2332,23 +2358,72 @@ async def run_game() -> None:
         if phase == "playing":
             draw_board()
             if countdown_ms > 0 and not state.game_over and not state.paused:
-                # Countdown overlay: dim screen then show big number
+                # --- Enhanced Countdown Overlay ---
                 _cd_ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-                _cd_ov.fill((0, 0, 0, 110))
+                _cd_ov.fill((0, 0, 0, 150))
                 screen.blit(_cd_ov, (0, 0))
+                _cdcx = SCREEN_WIDTH // 2
+                _cdcy = SCREEN_HEIGHT // 2
+
                 if countdown_ms > COUNTDOWN_GO_MS:
-                    _cd_step = math.ceil((countdown_ms - COUNTDOWN_GO_MS) / COUNTDOWN_STEP_MS)
-                    _cd_label = str(max(1, min(3, _cd_step)))
-                    _cd_col = (255, 220, 60)
+                    _cd_step = max(1, min(3, math.ceil((countdown_ms - COUNTDOWN_GO_MS) / COUNTDOWN_STEP_MS)))
+                    _cd_label = str(_cd_step)
+                    _remaining_in_step = (countdown_ms - COUNTDOWN_GO_MS) - (_cd_step - 1) * COUNTDOWN_STEP_MS
+                    _step_t = 1.0 - _remaining_in_step / COUNTDOWN_STEP_MS  # 0=just appeared, 1=about to leave
+                    _num_colors = {3: (255, 80, 60), 2: (255, 185, 45), 1: (255, 245, 80)}
+                    _cd_col = _num_colors.get(_cd_step, (255, 220, 60))
                 else:
                     _cd_label = "GO!"
-                    _cd_col = (100, 255, 130)
-                _cd_shadow = title_font.render(_cd_label, True, (0, 0, 0))
-                _cd_surf   = title_font.render(_cd_label, True, _cd_col)
-                _cd_x = SCREEN_WIDTH  // 2 - _cd_surf.get_width()  // 2
-                _cd_y = SCREEN_HEIGHT // 2 - _cd_surf.get_height() // 2
-                screen.blit(_cd_shadow, (_cd_x + 3, _cd_y + 3))
-                screen.blit(_cd_surf,   (_cd_x,     _cd_y))
+                    _cd_col = (80, 255, 120)
+                    _step_t = 1.0 - countdown_ms / COUNTDOWN_GO_MS
+
+                # Scale: pop in large then ease to normal size
+                _cd_scale = 1.0 + 0.55 * max(0.0, 1.0 - min(1.0, _step_t * 3.0))
+
+                # Render and scale the number surface
+                _cd_base   = big_title_font.render(_cd_label, True, _cd_col)
+                _cd_shd_b  = big_title_font.render(_cd_label, True, (0, 0, 0))
+                _bw, _bh   = _cd_base.get_size()
+                _sw = max(1, int(_bw * _cd_scale))
+                _sh = max(1, int(_bh * _cd_scale))
+                _cd_scaled = pygame.transform.smoothscale(_cd_base, (_sw, _sh))
+                _cd_shd_sc = pygame.transform.smoothscale(_cd_shd_b, (_sw, _sh))
+
+                # Pulsing glow ring behind number
+                _ring_r = int((_bh // 2 + 18) * _cd_scale)
+                _glow_a = int(55 + 40 * math.sin(animation_frame / 8.0))
+                _glow_sz = _ring_r * 2 + 24
+                _glow_s  = pygame.Surface((_glow_sz, _glow_sz), pygame.SRCALPHA)
+                pygame.draw.circle(_glow_s, (*_cd_col, _glow_a),
+                                   (_glow_sz // 2, _glow_sz // 2), _ring_r, 10)
+                screen.blit(_glow_s, (_cdcx - _glow_sz // 2, _cdcy - _glow_sz // 2))
+
+                # Layered drop-shadow for depth
+                for _soff in (5, 3, 2):
+                    _tmp_s = _cd_shd_sc.copy()
+                    _tmp_s.set_alpha(50 + _soff * 10)
+                    screen.blit(_tmp_s, (_cdcx - _sw // 2 + _soff, _cdcy - _sh // 2 + _soff))
+
+                # Main number
+                screen.blit(_cd_scaled, (_cdcx - _sw // 2, _cdcy - _sh // 2))
+
+                # Level label above the number
+                _cd_lvl = font.render(f"LEVEL  {state.level}", True, (200, 186, 135))
+                screen.blit(_cd_lvl, (_cdcx - _cd_lvl.get_width() // 2, _cdcy - _sh // 2 - 38))
+
+                # Difficulty badge below the number
+                _diff_name = DIFFICULTIES[diff_idx].upper()
+                _dbc = {"EASY": (36, 120, 46), "NORMAL": (38, 40, 120), "HARD": (130, 28, 28)}
+                _dtc = {"EASY": (130, 240, 148), "NORMAL": (188, 186, 255), "HARD": (255, 138, 128)}
+                _db_col = _dbc.get(_diff_name, (80, 78, 50))
+                _dt_col = _dtc.get(_diff_name, (200, 190, 140))
+                _db_s = small_font.render(_diff_name, True, _dt_col)
+                _db_r = pygame.Rect(0, 0, _db_s.get_width() + 22, _db_s.get_height() + 8)
+                _db_r.center = (_cdcx, _cdcy + _sh // 2 + 22)
+                pygame.draw.rect(screen, _db_col, _db_r, border_radius=7)
+                pygame.draw.rect(screen, _dt_col, _db_r, 1, border_radius=7)
+                screen.blit(_db_s, (_db_r.centerx - _db_s.get_width() // 2,
+                                    _db_r.centery - _db_s.get_height() // 2))
             if state.paused and not state.game_over:
                 # Pause overlay
                 ov = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
