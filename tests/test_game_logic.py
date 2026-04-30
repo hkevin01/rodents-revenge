@@ -1,6 +1,7 @@
 from rodents_revenge.game import (
     BLOCK, CHEESE, EMPTY, GameState, WALL,
     TRAP_SCORE, CHEESE_SCORE, MULTI_TRAP_BONUS,
+    GRID_WIDTH, LEVEL_PRESETS,
 )
 
 
@@ -289,6 +290,19 @@ def test_mouse_pushes_multiple_blocks_in_chain() -> None:
     assert state.board[2][3] == EMPTY
 
 
+def test_mouse_can_push_block_into_cheese_and_crush_it() -> None:
+    state = blank_state()
+    state.board[2][3] = BLOCK
+    state.board[2][4] = CHEESE
+
+    moved = state.handle_player_move(1, 0)
+
+    assert moved is True
+    assert state.mouse_pos == (3, 2)
+    assert state.board[2][4] == BLOCK
+    assert state.score == 0  # crushed cheese is not collected by the mouse
+
+
 def test_mouse_cannot_push_multiple_blocks_if_no_space() -> None:
     state = blank_state()
     state.board[2][3] = BLOCK
@@ -322,6 +336,58 @@ def test_difficulty_cat_delay_bonus_stored() -> None:
     # Survives reset_level
     state.reset_level(2)
     assert state.cat_delay_bonus == 3
+
+
+def test_all_preset_rows_match_expected_interior_width() -> None:
+    expected_width = GRID_WIDTH - 2
+    for rows in LEVEL_PRESETS.values():
+        for row in rows:
+            assert len(row) == expected_width
+
+
+def test_level_6_wall_paths_are_connected_from_mouse_spawn() -> None:
+    from collections import deque
+
+    rows = LEVEL_PRESETS[6]
+    width = GRID_WIDTH - 2
+    height = len(rows)
+
+    mouse = None
+    board: list[list[str]] = []
+    for y, row in enumerate(rows):
+        line: list[str] = []
+        for x in range(width):
+            ch = row[x]
+            if ch == "M":
+                mouse = (x, y)
+                ch = "."
+            line.append(ch)
+        board.append(line)
+
+    assert mouse is not None
+
+    queue: deque[tuple[int, int]] = deque([mouse])
+    visited = {mouse}
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if not (0 <= nx < width and 0 <= ny < height):
+                continue
+            if (nx, ny) in visited:
+                continue
+            if board[ny][nx] == "#":
+                continue
+            visited.add((nx, ny))
+            queue.append((nx, ny))
+
+    open_cells = {
+        (x, y)
+        for y in range(height)
+        for x in range(width)
+        if board[y][x] != "#"
+    }
+    assert visited == open_cells
 
 
 # ---------- new feature tests ----------

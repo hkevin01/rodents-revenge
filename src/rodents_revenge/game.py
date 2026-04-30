@@ -142,15 +142,15 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "...#..#.....C.....",
         "...#..#..BBB......",
         "..M#..####....X...",
-        "...#..............",
+        "..................",
         "...####..###......",
-        "......#..#.#...C..",
+        "......#..###...C..",
         "..BBB.#..###......",
-        "......#............",
-        "..X...#####....X...",
-        "...........#.......",
-        "..C....BBB..#......",
-        "...........###.....",
+        "......#...........",
+        "..X...#####....X..",
+        "...........#......",
+        "..C....BBB..#.....",
+        "...........###....",
     ],
     7: [
         "..###.....###.....",
@@ -191,7 +191,7 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "......#...#.......",
         "..X...#...#...X...",
         "......#...#..C....",
-        "..###.#####........",
+        "..###.#####.......",
         "......#...#....X..",
         "..BBB.#...#.......",
         "......#...#..C....",
@@ -545,7 +545,8 @@ class GameState:
 
             if not self.in_bounds(cx, cy):
                 return False
-            if self.board[cy][cx] != EMPTY or self._cat_at(cx, cy) or (cx, cy) == self.mouse_pos:
+            # Classic behavior: a block may be pushed into cheese, crushing it.
+            if self.board[cy][cx] not in (EMPTY, CHEESE) or self._cat_at(cx, cy) or (cx, cy) == self.mouse_pos:
                 return False
 
             for bx, by in reversed(chain):
