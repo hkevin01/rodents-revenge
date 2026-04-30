@@ -1669,14 +1669,22 @@ async def run_game() -> None:
                 _tmp.set_alpha(100)
                 screen.blit(_tmp, (_lcx - _lc_num.get_width() // 2 + _dxy[0], _lcy - 44 + _dxy[1]))
             screen.blit(_lc_num, (_lcx - _lc_num.get_width() // 2, _lcy - 44))
-            # Decorative separator line
-            _sep_hw = 160
-            pygame.draw.line(screen, (100, 92, 56), (_lcx - _sep_hw, _lcy + 24), (_lcx - 10, _lcy + 24), 1)
-            pygame.draw.circle(screen, (200, 180, 80), (_lcx, _lcy + 24), 5)
-            pygame.draw.line(screen, (100, 92, 56), (_lcx + 10, _lcy + 24), (_lcx + _sep_hw, _lcy + 24), 1)
-            # Get ready text + difficulty badge
-            _rdy = font.render("Get Ready...", True, (190, 178, 135))
-            screen.blit(_rdy, (_lcx - _rdy.get_width() // 2, _lcy + 36))
+            # Status card: polished loading message
+            _card = pygame.Rect(0, 0, 420, 64)
+            _card.center = (_lcx, _lcy + 52)
+            _card_bg = pygame.Surface((_card.width, _card.height), pygame.SRCALPHA)
+            pygame.draw.rect(_card_bg, (16, 14, 10, 210), _card_bg.get_rect(), border_radius=12)
+            pygame.draw.rect(_card_bg, (120, 108, 68, 200), _card_bg.get_rect(), 1, border_radius=12)
+            screen.blit(_card_bg, _card.topleft)
+
+            _loading = font.render("Loading Next Level", True, (220, 206, 156))
+            screen.blit(_loading, (_lcx - _loading.get_width() // 2, _card.y + 9))
+
+            # Animated wait indicator (professional status feedback)
+            _dots = "." * ((animation_frame // 18) % 4)
+            _wait = small_font.render(f"Please wait{_dots}", True, (174, 165, 132))
+            screen.blit(_wait, (_lcx - _wait.get_width() // 2, _card.y + 36))
+
             _diff_name = DIFFICULTIES[diff_idx].upper()
             _diff_badge_cols = {"EASY": (36, 120, 46), "NORMAL": (38, 40, 120), "HARD": (130, 28, 28)}
             _diff_txt_cols  = {"EASY": (130, 240, 148), "NORMAL": (188, 186, 255), "HARD": (255, 138, 128)}
@@ -1684,7 +1692,7 @@ async def run_game() -> None:
             _dt_col = _diff_txt_cols.get(_diff_name, (200, 190, 140))
             _db_surf = small_font.render(_diff_name, True, _dt_col)
             _db_rect = pygame.Rect(0, 0, _db_surf.get_width() + 24, _db_surf.get_height() + 10)
-            _db_rect.center = (_lcx, _lcy + 74)
+            _db_rect.center = (_lcx, _lcy + 102)
             pygame.draw.rect(screen, _db_col, _db_rect, border_radius=8)
             pygame.draw.rect(screen, _dt_col, _db_rect, 1, border_radius=8)
             screen.blit(_db_surf, (_db_rect.centerx - _db_surf.get_width() // 2,
