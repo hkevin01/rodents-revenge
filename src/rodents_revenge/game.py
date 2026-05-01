@@ -2149,14 +2149,33 @@ async def run_game() -> None:
         screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2,
                                 play_rect.centery - play_lbl.get_height() // 2))
 
-        # "Tap or click" hint
-        hint = tiny_font.render("Tap  or  Click  PLAY  to  Begin", True, (96, 92, 68))
+        # "Tap anywhere" hint
+        hint = tiny_font.render("Tap anywhere to begin  •  choose difficulty first if needed", True, (96, 92, 68))
         screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 66))
 
         legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (78, 74, 56))
         legal2 = tiny_font.render("Unofficial fan remake  -  open source", True, (78, 74, 56))
         screen.blit(legal1, (SCREEN_WIDTH // 2 - legal1.get_width() // 2, SCREEN_HEIGHT - 46))
         screen.blit(legal2, (SCREEN_WIDTH // 2 - legal2.get_width() // 2, SCREEN_HEIGHT - 30))
+
+    def _start_from_title() -> None:
+        """Start gameplay using currently selected difficulty."""
+        nonlocal state, cat_ms_accum, countdown_ms, score_saved, new_high_score
+        nonlocal entering_initials, entry_initials, show_help, phase
+        s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+        state = GameState(
+            cat_delay_bonus=s["cat_delay_bonus"],
+            cat_count_offset=s["cat_count_offset"],
+        )
+        cat_ms_accum = 0
+        countdown_ms = COUNTDOWN_TOTAL_MS
+        block_tweens.clear()
+        score_saved = False
+        new_high_score = False
+        entering_initials = False
+        entry_initials = ""
+        show_help = False
+        phase = "playing"
 
     while running:
         animation_frame += 1
@@ -2172,30 +2191,20 @@ async def run_game() -> None:
                     # Difficulty buttons — three distinct rects in bottom strip
                     btn_w2, btn_h2 = 158, 62
                     x_offsets2 = [-170, 0, 170]
+                    touched_difficulty = False
                     for ti, _d in enumerate(DIFFICULTIES):
                         r2 = pygame.Rect(0, 0, btn_w2, btn_h2)
                         r2.center = (SCREEN_WIDTH // 2 + x_offsets2[ti], SCREEN_HEIGHT - 195)
                         if r2.collidepoint(sx, sy):
                             diff_idx = ti
+                            touched_difficulty = True
                             break
-                    # PLAY button
+                    # PLAY button (with larger touch target) or tap-anywhere fallback.
                     play_r = pygame.Rect(0, 0, 290, 74)
                     play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    if play_r.collidepoint(sx, sy):
-                        s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
-                        state = GameState(
-                            cat_delay_bonus=s["cat_delay_bonus"],
-                            cat_count_offset=s["cat_count_offset"],
-                        )
-                        cat_ms_accum = 0
-                        countdown_ms = COUNTDOWN_TOTAL_MS
-                        block_tweens.clear()
-                        score_saved = False
-                        new_high_score = False
-                        entering_initials = False
-                        entry_initials = ""
-                        show_help = False
-                        phase = "playing"
+                    play_hit_r = play_r.inflate(240, 130)
+                    if play_hit_r.collidepoint(sx, sy) or not touched_difficulty:
+                        _start_from_title()
                 elif phase == "playing":
                     # HUD touch buttons
                     if _tbtn_pause_rect.collidepoint(sx, sy):
@@ -2385,30 +2394,20 @@ async def run_game() -> None:
                     # Difficulty buttons
                     btn_w_m, btn_h_m = 158, 62
                     x_offsets_m = [-170, 0, 170]
+                    clicked_difficulty = False
                     for ti, _d in enumerate(DIFFICULTIES):
                         r_m = pygame.Rect(0, 0, btn_w_m, btn_h_m)
                         r_m.center = (SCREEN_WIDTH // 2 + x_offsets_m[ti], SCREEN_HEIGHT - 195)
                         if r_m.collidepoint(sx, sy):
                             diff_idx = ti
+                            clicked_difficulty = True
                             break
-                    # PLAY button
+                    # PLAY button (with larger click target) or click-anywhere fallback.
                     play_r_m = pygame.Rect(0, 0, 290, 74)
                     play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    if play_r_m.collidepoint(sx, sy):
-                        s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
-                        state = GameState(
-                            cat_delay_bonus=s["cat_delay_bonus"],
-                            cat_count_offset=s["cat_count_offset"],
-                        )
-                        cat_ms_accum = 0
-                        countdown_ms = COUNTDOWN_TOTAL_MS
-                        block_tweens.clear()
-                        score_saved = False
-                        new_high_score = False
-                        entering_initials = False
-                        entry_initials = ""
-                        show_help = False
-                        phase = "playing"
+                    play_hit_m = play_r_m.inflate(240, 130)
+                    if play_hit_m.collidepoint(sx, sy) or not clicked_difficulty:
+                        _start_from_title()
                 elif phase == "playing":
                     if _tbtn_pause_rect.collidepoint(sx, sy):
                         if not state.game_over:
