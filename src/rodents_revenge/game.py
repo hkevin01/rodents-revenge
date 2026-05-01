@@ -26,7 +26,10 @@ TILE_SIZE = 40
 FPS = 60
 
 HUD_HEIGHT = 64
-SCREEN_WIDTH = GRID_WIDTH * TILE_SIZE
+CONTROL_LANE_W = 220
+BOARD_ORIGIN_X = CONTROL_LANE_W
+BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
+SCREEN_WIDTH = BOARD_ORIGIN_X + BOARD_PIXEL_W
 SCREEN_HEIGHT = GRID_HEIGHT * TILE_SIZE + HUD_HEIGHT
 
 EMPTY = 0
@@ -1416,8 +1419,8 @@ async def run_game() -> None:
     sound_enabled = True
 
     # --- Virtual joystick touch state ---
-    # Floats to wherever the player first touches (left half of screen)
-    _vjoy_default_cx = VJOY_RADIUS + 44
+    # Fixed joystick anchor in the dedicated left control lane (outside map).
+    _vjoy_default_cx = max(VJOY_RADIUS + 14, BOARD_ORIGIN_X // 2)
     _vjoy_default_cy = SCREEN_HEIGHT - VJOY_RADIUS - 42
     vjoy_cx = _vjoy_default_cx
     vjoy_cy = _vjoy_default_cy
@@ -1592,11 +1595,17 @@ async def run_game() -> None:
                 if cat_alert[cat] <= 0:
                     del cat_alert[cat]
         # ----------------------------------------------------------
-        # Fill entire screen with the room's dominant floor color first
-        screen.fill(_theme["floor_a"])
+        # Dark background + dedicated control lane on the left keeps thumb off-map.
+        screen.fill((10, 10, 10))
+        lane_rect = pygame.Rect(0, HUD_HEIGHT, BOARD_ORIGIN_X, SCREEN_HEIGHT - HUD_HEIGHT)
+        pygame.draw.rect(screen, (20, 20, 20), lane_rect)
+        pygame.draw.line(screen, (44, 44, 44), (BOARD_ORIGIN_X - 1, HUD_HEIGHT), (BOARD_ORIGIN_X - 1, SCREEN_HEIGHT), 2)
+
+        board_bg = pygame.Rect(BOARD_ORIGIN_X, HUD_HEIGHT, BOARD_PIXEL_W, GRID_HEIGHT * TILE_SIZE)
+        pygame.draw.rect(screen, _theme["floor_a"], board_bg)
         for y in range(state.height):
             for x in range(state.width):
-                rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+                rect = pygame.Rect(BOARD_ORIGIN_X + x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
 
                 tile = state.board[y][x]
                 if tile == WALL:
@@ -1610,7 +1619,7 @@ async def run_game() -> None:
                     _draw_floor_tile(screen, rect, x, y, _theme)
 
         for cx, cy in state.cats:
-            rect = pygame.Rect(cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+            rect = pygame.Rect(BOARD_ORIGIN_X + cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
             if (cx, cy) in cat_alert:
                 # draw orange glow ring behind sprite
                 glow_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
@@ -1674,7 +1683,7 @@ async def run_game() -> None:
             pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx + 2, cb_r.bottom - 3, 9, 5))
 
         mx, my = state.mouse_pos
-        mouse_rect = pygame.Rect(mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+        mouse_rect = pygame.Rect(BOARD_ORIGIN_X + mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
         bob = int(math.sin(animation_frame / 7.0) * 2)
         # Side-profile mouse drawing (always procedural)
         fx = 1 if mouse_facing >= 0 else -1
@@ -1726,7 +1735,7 @@ async def run_game() -> None:
 
         for tw in block_tweens:
             t = tw["t"]
-            px = int(tw["gx0"] * TILE_SIZE + (tw["gx1"] - tw["gx0"]) * TILE_SIZE * t)
+            px = int(BOARD_ORIGIN_X + tw["gx0"] * TILE_SIZE + (tw["gx1"] - tw["gx0"]) * TILE_SIZE * t)
             py = int(tw["gy0"] * TILE_SIZE + HUD_HEIGHT + (tw["gy1"] - tw["gy0"]) * TILE_SIZE * t)
             _draw_block_tile(screen, pygame.Rect(px, py, TILE_SIZE, TILE_SIZE), _theme["block_face"], _theme["block_edge"])
 
@@ -2226,13 +2235,17 @@ async def run_game() -> None:
                         # more standard mobile layout, with optional floating mode.
                         _touch_ok = False
                         if VJOY_FLOAT:
-                            _touch_ok = sx < SCREEN_WIDTH * 3 // 5
+                            _touch_ok = sx < BOARD_ORIGIN_X
                         else:
-                            _touch_ok = math.hypot(sx - _vjoy_default_cx, sy - _vjoy_default_cy) <= VJOY_TOUCH_RADIUS
+                            _touch_ok = (
+                                sx < BOARD_ORIGIN_X
+                                and sy >= HUD_HEIGHT
+                                and math.hypot(sx - _vjoy_default_cx, sy - _vjoy_default_cy) <= VJOY_TOUCH_RADIUS
+                            )
 
                         if _touch_ok and not vjoy_active:
                             if VJOY_FLOAT:
-                                vjoy_cx = max(VJOY_RADIUS + 10, min(sx, SCREEN_WIDTH * 3 // 5 - VJOY_RADIUS - 10))
+                                vjoy_cx = max(VJOY_RADIUS + 10, min(sx, BOARD_ORIGIN_X - VJOY_RADIUS - 10))
                                 vjoy_cy = max(VJOY_RADIUS + HUD_HEIGHT + 10, min(sy, SCREEN_HEIGHT - VJOY_RADIUS - 10))
                             else:
                                 vjoy_cx = _vjoy_default_cx
