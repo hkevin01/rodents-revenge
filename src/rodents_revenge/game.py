@@ -27,9 +27,11 @@ FPS = 60
 
 HUD_HEIGHT = 64
 CONTROL_LANE_W = 220
+ACTION_LANE_W = 180
 BOARD_ORIGIN_X = CONTROL_LANE_W
 BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
-SCREEN_WIDTH = BOARD_ORIGIN_X + BOARD_PIXEL_W
+BOARD_RIGHT_X = BOARD_ORIGIN_X + BOARD_PIXEL_W
+SCREEN_WIDTH = BOARD_ORIGIN_X + BOARD_PIXEL_W + ACTION_LANE_W
 SCREEN_HEIGHT = GRID_HEIGHT * TILE_SIZE + HUD_HEIGHT
 
 EMPTY = 0
@@ -1600,6 +1602,10 @@ async def run_game() -> None:
         lane_rect = pygame.Rect(0, HUD_HEIGHT, BOARD_ORIGIN_X, SCREEN_HEIGHT - HUD_HEIGHT)
         pygame.draw.rect(screen, (20, 20, 20), lane_rect)
         pygame.draw.line(screen, (44, 44, 44), (BOARD_ORIGIN_X - 1, HUD_HEIGHT), (BOARD_ORIGIN_X - 1, SCREEN_HEIGHT), 2)
+        # Right action lane
+        rlane_rect = pygame.Rect(BOARD_RIGHT_X, HUD_HEIGHT, ACTION_LANE_W, SCREEN_HEIGHT - HUD_HEIGHT)
+        pygame.draw.rect(screen, (20, 20, 20), rlane_rect)
+        pygame.draw.line(screen, (44, 44, 44), (BOARD_RIGHT_X, HUD_HEIGHT), (BOARD_RIGHT_X, SCREEN_HEIGHT), 2)
 
         board_bg = pygame.Rect(BOARD_ORIGIN_X, HUD_HEIGHT, BOARD_PIXEL_W, GRID_HEIGHT * TILE_SIZE)
         pygame.draw.rect(screen, _theme["floor_a"], board_bg)
@@ -1750,28 +1756,33 @@ async def run_game() -> None:
         # Room name badge
         room_surf = small_font.render(_theme["name"], True, (200, 188, 148))
         screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
-        # HUD touch buttons — Pause and Help, centred in the HUD
-        _btn_y = HUD_HEIGHT // 2 - TBTN_H // 2
-        _btn_gap = 8
-        _3btn_total = 3 * TBTN_W + 2 * _btn_gap
-        pause_x = SCREEN_WIDTH // 2 - _3btn_total // 2
-        help_x  = pause_x + TBTN_W + _btn_gap
-        snd_x   = help_x  + TBTN_W + _btn_gap
-        _tbtn_pause_rect.topleft = (pause_x, _btn_y)
-        _tbtn_help_rect.topleft  = (help_x,  _btn_y)
-        _tbtn_sound_rect.topleft = (snd_x,   _btn_y)
-        _draw_touch_btn(screen, _tbtn_pause_rect, "PAUSE",   active=state.paused)
-        _draw_touch_btn(screen, _tbtn_help_rect,  "HELP",    active=show_help)
+        # Action buttons — stacked near the bottom of the right lane for right-thumb reach
+        _abtn_w = ACTION_LANE_W - 20
+        _abtn_h = 52
+        _abtn_x = BOARD_RIGHT_X + 10
+        _abtn_gap = 14
+        _snd_y   = SCREEN_HEIGHT - _abtn_h - _abtn_gap
+        _help_y  = _snd_y - _abtn_h - _abtn_gap
+        _pause_y = _help_y - _abtn_h - _abtn_gap
+        _tbtn_pause_rect.update(_abtn_x, _pause_y, _abtn_w, _abtn_h)
+        _tbtn_help_rect.update( _abtn_x, _help_y,  _abtn_w, _abtn_h)
+        _tbtn_sound_rect.update(_abtn_x, _snd_y,   _abtn_w, _abtn_h)
+        _draw_touch_btn(screen, _tbtn_pause_rect, "PAUSE", active=state.paused)
+        _draw_touch_btn(screen, _tbtn_help_rect,  "HELP",  active=show_help)
         _snd_lbl = "SND ON" if sound_enabled else "SND OFF"
         _snd_col = (50, 70, 50) if sound_enabled else (80, 40, 40)
-        _draw_touch_btn(screen, _tbtn_sound_rect, _snd_lbl,  color=_snd_col, active=False)
+        _draw_touch_btn(screen, _tbtn_sound_rect, _snd_lbl, color=_snd_col, active=False)
 
-        # Lives display — one pip per life
+        # Lives display — pips centered in the right lane, above the action buttons
+        _life_cx = BOARD_RIGHT_X + ACTION_LANE_W // 2
+        _life_row_y = _pause_y - 36
         for i in range(state.lives):
             pygame.draw.circle(
                 screen, colors["mouse"],
-                (SCREEN_WIDTH - 20 - i * 22, HUD_HEIGHT // 2), 7,
+                (int(_life_cx + (i - (state.lives - 1) / 2) * 22), _life_row_y), 8,
             )
+        _lives_lbl = tiny_font.render("LIVES", True, (110, 104, 82))
+        screen.blit(_lives_lbl, (_life_cx - _lives_lbl.get_width() // 2, _life_row_y + 12))
 
         if state.win_level_flash > 0:
             msg = small_font.render("Level cleared!", True, colors["levelup"])
