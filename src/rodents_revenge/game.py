@@ -49,11 +49,13 @@ GAME_TITLE = "Rodent Rumble"
 VJOY_RADIUS = 82          # slightly larger ring fits tablet thumbs better
 VJOY_THUMB_R = 30         # larger thumb knob improves touch acquisition
 VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
-VJOY_INITIAL_DELAY = 8    # quicker hold repeat ramp to match mobile joystick expectations
-VJOY_REPEAT_EVERY = 4     # faster repeat cadence while holding a direction
+VJOY_INITIAL_REPEAT_MS = 180   # delay before first held repeat on touch stick
+VJOY_REPEAT_MS = 130           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
 VJOY_TOUCH_RADIUS = 144   # generous invisible touch catch zone around the stick
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
+VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
+VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
@@ -1423,7 +1425,8 @@ async def run_game() -> None:
     vjoy_finger_id: int | None = None
     vjoy_offset = (0.0, 0.0)   # thumb displacement from center
     vjoy_last_dir = (0, 0)
-    vjoy_held_frames = 0
+    vjoy_hold_ms = 0
+    vjoy_active_dir = (0, 0)
     key_last_dir = (0, 0)
     key_held_frames = 0
     key_left_held = False
@@ -1489,7 +1492,17 @@ async def run_game() -> None:
         ox, oy = _clamp_vjoy_offset(offset)
         abs_x = abs(ox)
         abs_y = abs(oy)
-        if math.hypot(ox, oy) < VJOY_DEADZONE:
+        max_dist = VJOY_RADIUS - VJOY_THUMB_R - 4
+        if max_dist <= 0:
+            return (0, 0)
+
+        dist = math.hypot(ox, oy)
+        engage_dist = max(VJOY_DEADZONE, max_dist * VJOY_ENGAGE_PCT)
+        release_dist = max(VJOY_DEADZONE * 0.8, max_dist * VJOY_RELEASE_PCT)
+
+        if previous_dir == (0, 0) and dist < engage_dist:
+            return (0, 0)
+        if previous_dir != (0, 0) and dist < release_dist:
             return (0, 0)
 
         if abs_x > abs_y * VJOY_AXIS_LOCK_RATIO:
@@ -2228,7 +2241,8 @@ async def run_game() -> None:
                             vjoy_finger_id = event.finger_id
                             vjoy_offset = _clamp_vjoy_offset((float(sx - vjoy_cx), float(sy - vjoy_cy)))
                             vjoy_last_dir = (0, 0)
-                            vjoy_held_frames = 0
+                            vjoy_hold_ms = 0
+                            vjoy_active_dir = (0, 0)
             elif event.type == pygame.FINGERMOTION:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
                     sx, sy = _touch_to_screen(event.x, event.y)
@@ -2239,7 +2253,8 @@ async def run_game() -> None:
                     vjoy_finger_id = None
                     vjoy_offset = (0.0, 0.0)
                     vjoy_last_dir = (0, 0)
-                    vjoy_held_frames = 0
+                    vjoy_hold_ms = 0
+                    vjoy_active_dir = (0, 0)
                     # Return joystick to default corner position
                     vjoy_cx = _vjoy_default_cx
                     vjoy_cy = _vjoy_default_cy
@@ -2447,27 +2462,44 @@ async def run_game() -> None:
                 key_last_dir = (0, 0)
                 key_held_frames = 0
 
-        # ---- virtual joystick auto-repeat (runs every frame while held) -----
+        # ---- virtual joystick auto-repeat (time-based for stable touch feel) --
         if vjoy_active and phase == "playing":
-            d = _vjoy_dir(vjoy_offset, vjoy_last_dir)
+            d = _vjoy_dir(vjoy_offset, vjoy_active_dir)
             if d != (0, 0):
-                if d != vjoy_last_dir:
-                    # New direction — move immediately, reset hold counter
+                if d != vjoy_active_dir:
+                    # New direction: move immediately, then wait initial delay.
+                    vjoy_active_dir = d
                     vjoy_last_dir = d
-                    vjoy_held_frames = 0
+                    vjoy_hold_ms = 0
                     if _apply_vjoy_move(d):
                         player_moved = True
                 else:
-                    vjoy_held_frames += 1
-                    if vjoy_held_frames == VJOY_INITIAL_DELAY or (
-                        vjoy_held_frames > VJOY_INITIAL_DELAY
-                        and (vjoy_held_frames - VJOY_INITIAL_DELAY) % VJOY_REPEAT_EVERY == 0
-                    ):
+                    vjoy_hold_ms += dt_ms
+                    threshold = VJOY_INITIAL_REPEAT_MS
+                    if vjoy_hold_ms >= threshold:
+                        vjoy_hold_ms -= VJOY_REPEAT_MS
                         if _apply_vjoy_move(d):
                             player_moved = True
             else:
+                vjoy_active_dir = (0, 0)
                 vjoy_last_dir = (0, 0)
-                vjoy_held_frames = 0
+                vjoy_hold_ms = 0
+
+        # Auto-pause when tab/app loses focus on web/mobile, and on desktop focus loss.
+        if phase == "playing" and not state.game_over:
+            if sys.platform == "emscripten":
+                try:
+                    import platform  # type: ignore[import]
+
+                    doc_hidden = bool(getattr(platform.window.document, "hidden", False))
+                    has_focus_fn = getattr(platform.window.document, "hasFocus", None)
+                    has_focus = bool(has_focus_fn()) if callable(has_focus_fn) else True
+                    if (doc_hidden or not has_focus) and not state.paused:
+                        state.paused = True
+                except Exception:
+                    pass
+            elif not pygame.display.get_active() and not state.paused:
+                state.paused = True
 
         if phase == "playing" and not state.paused and not show_help:
             # Countdown: tick down, block cat movement until it expires
