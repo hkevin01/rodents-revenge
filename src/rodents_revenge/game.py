@@ -62,7 +62,7 @@ VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter ne
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
 VJOY_ANCHOR_X_PCT = 0.28  # keep stick farther from map edge (more left-centered)
-VJOY_ANCHOR_Y_PCT = 0.56  # move stick upward toward center-left for easier down/right arcs
+VJOY_ANCHOR_Y_PCT = 0.50  # align stick around vertical center of play area
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
