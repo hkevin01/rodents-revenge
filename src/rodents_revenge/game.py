@@ -57,10 +57,12 @@ VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
 VJOY_INITIAL_REPEAT_MS = 180   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 130           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 144   # generous invisible touch catch zone around the stick
+VJOY_TOUCH_RADIUS = 172   # larger catch zone reduces missed grabs near stick edges
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
+VJOY_ANCHOR_X_PCT = 0.39  # shift stick left within control lane for easier right pushes
+VJOY_ANCHOR_Y_PCT = 0.66  # raise stick above bottom edge to reduce thumb curl fatigue
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
@@ -1422,8 +1424,11 @@ async def run_game() -> None:
 
     # --- Virtual joystick touch state ---
     # Fixed joystick anchor in the dedicated left control lane (outside map).
-    _vjoy_default_cx = max(VJOY_RADIUS + 14, BOARD_ORIGIN_X // 2)
-    _vjoy_default_cy = SCREEN_HEIGHT - VJOY_RADIUS - 42
+    _vjoy_default_cx = int(BOARD_ORIGIN_X * VJOY_ANCHOR_X_PCT)
+    _vjoy_default_cx = max(VJOY_RADIUS + 8, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 28))
+    _play_h = SCREEN_HEIGHT - HUD_HEIGHT
+    _vjoy_default_cy = int(HUD_HEIGHT + _play_h * VJOY_ANCHOR_Y_PCT)
+    _vjoy_default_cy = max(HUD_HEIGHT + VJOY_RADIUS + 14, min(_vjoy_default_cy, SCREEN_HEIGHT - VJOY_RADIUS - 52))
     vjoy_cx = _vjoy_default_cx
     vjoy_cy = _vjoy_default_cy
     vjoy_active = False
