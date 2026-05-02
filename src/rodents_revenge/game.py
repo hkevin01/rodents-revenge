@@ -61,8 +61,8 @@ VJOY_TOUCH_RADIUS = 172   # larger catch zone reduces missed grabs near stick ed
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
-VJOY_ANCHOR_X_PCT = 0.39  # shift stick left within control lane for easier right pushes
-VJOY_ANCHOR_Y_PCT = 0.66  # raise stick above bottom edge to reduce thumb curl fatigue
+VJOY_ANCHOR_X_PCT = 0.28  # keep stick farther from map edge (more left-centered)
+VJOY_ANCHOR_Y_PCT = 0.56  # move stick upward toward center-left for easier down/right arcs
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
@@ -1425,7 +1425,7 @@ async def run_game() -> None:
     # --- Virtual joystick touch state ---
     # Fixed joystick anchor in the dedicated left control lane (outside map).
     _vjoy_default_cx = int(BOARD_ORIGIN_X * VJOY_ANCHOR_X_PCT)
-    _vjoy_default_cx = max(VJOY_RADIUS + 8, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 28))
+    _vjoy_default_cx = max(VJOY_RADIUS + 8, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 54))
     _play_h = SCREEN_HEIGHT - HUD_HEIGHT
     _vjoy_default_cy = int(HUD_HEIGHT + _play_h * VJOY_ANCHOR_Y_PCT)
     _vjoy_default_cy = max(HUD_HEIGHT + VJOY_RADIUS + 14, min(_vjoy_default_cy, SCREEN_HEIGHT - VJOY_RADIUS - 52))

@@ -96,7 +96,7 @@ jobs:
           )
           html = html.replace(
               '        msg  = "Ready to start ! Please click/touch page"\n        platform.window.infobox.innerText = msg',
-              '        msg  = "Tap anywhere to start"\n        platform.window.infobox.innerHTML = "<div class=\"rr-start-icon\">🐭</div><div class=\"rr-start-title\">Rodent Rumble</div><div class=\"rr-start-cta\">Tap anywhere to start</div>"\n        platform.window.infobox.style.display = "grid"\n        platform.window.infobox.style.placeItems = "center"\n        platform.window.infobox.style.left = "50%"\n        platform.window.infobox.style.top = "50%"\n        platform.window.infobox.style.bottom = "auto"\n        platform.window.infobox.style.width = "min(96vw, 760px)"\n        platform.window.infobox.style.minHeight = "190px"\n        platform.window.infobox.style.transform = "translate(-50%, -50%)"\n        platform.window.eval("(() => { const unlock = () => { if (window.MM) window.MM.UME = true; }; const opts = { passive: true }; ['pointerdown','pointerup','touchstart','touchend','click'].forEach((ev) => { window.addEventListener(ev, unlock, opts); document.addEventListener(ev, unlock, opts); document.body.addEventListener(ev, unlock, opts); if (window.infobox) infobox.addEventListener(ev, unlock, opts); }); })()")',
+              '        msg  = "Tap anywhere to start"\n        platform.window.infobox.innerHTML = "<div class=\"rr-start-icon\">🐭</div><div class=\"rr-start-title\">Rodent Rumble</div><div class=\"rr-start-cta\">Tap anywhere to start</div>"\n        platform.window.infobox.style.display = "grid"\n        platform.window.infobox.style.placeItems = "center"\n        platform.window.infobox.style.left = "50%"\n        platform.window.infobox.style.top = "50%"\n        platform.window.infobox.style.bottom = "auto"\n        platform.window.infobox.style.width = "min(96vw, 760px)"\n        platform.window.infobox.style.minHeight = "190px"\n        platform.window.infobox.style.zIndex = "9999"\n        platform.window.infobox.style.pointerEvents = "auto"\n        platform.window.infobox.style.transform = "translate(-50%, -50%)"\n        platform.window.eval("(() => { const unlock = () => { if (window.MM) window.MM.UME = true; }; const opts = { passive: true, capture: true }; ['pointerdown','pointerup','touchstart','touchend','click'].forEach((ev) => { window.addEventListener(ev, unlock, opts); document.addEventListener(ev, unlock, opts); document.body.addEventListener(ev, unlock, opts); if (window.infobox) infobox.addEventListener(ev, unlock, opts); }); })()")',
           )
           html = re.sub(
               r"function show_infobox\(\) \{.*?\n\}",
@@ -137,6 +137,7 @@ jobs:
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(3px);
             z-index: 8;
+            pointer-events: none;
           }
 
           #status {
@@ -194,7 +195,8 @@ jobs:
             letter-spacing: 0.02em;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             padding: 18px 18px 16px;
-            z-index: 10;
+            z-index: 9999;
+            pointer-events: auto;
           }
 
           .rr-start-icon {
@@ -216,6 +218,12 @@ jobs:
             color: #eadcb5;
             font-size: 16px;
             font-weight: 700;
+            pointer-events: none;
+          }
+
+          .rr-start-title,
+          .rr-start-icon {
+            pointer-events: none;
           }
 
           #infobox,
