@@ -26,7 +26,7 @@ TILE_SIZE = 40
 FPS = 60
 
 HUD_HEIGHT = 64
-CONTROL_LANE_W = 220
+CONTROL_LANE_W = 250
 ACTION_LANE_W = 180
 BOARD_ORIGIN_X = CONTROL_LANE_W
 BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
@@ -51,8 +51,8 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 82          # slightly larger ring fits tablet thumbs better
-VJOY_THUMB_R = 30         # larger thumb knob improves touch acquisition
+VJOY_RADIUS = 78          # keep ring large, but allow more leftward anchor room
+VJOY_THUMB_R = 28         # match slightly smaller ring for consistent feel
 VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
 VJOY_INITIAL_REPEAT_MS = 180   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 130           # held repeat interval on touch stick (time-based)
@@ -61,8 +61,8 @@ VJOY_TOUCH_RADIUS = 172   # larger catch zone reduces missed grabs near stick ed
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
-VJOY_ANCHOR_X_PCT = 0.28  # keep stick farther from map edge (more left-centered)
-VJOY_ANCHOR_Y_PCT = 0.50  # align stick around vertical center of play area
+VJOY_ANCHOR_X_PCT = 0.24  # keep stick farther from map edge (more left-centered)
+VJOY_ANCHOR_Y_PCT = 0.50  # align stick around true screen middle
 
 # Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
@@ -1425,9 +1425,8 @@ async def run_game() -> None:
     # --- Virtual joystick touch state ---
     # Fixed joystick anchor in the dedicated left control lane (outside map).
     _vjoy_default_cx = int(BOARD_ORIGIN_X * VJOY_ANCHOR_X_PCT)
-    _vjoy_default_cx = max(VJOY_RADIUS + 8, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 54))
-    _play_h = SCREEN_HEIGHT - HUD_HEIGHT
-    _vjoy_default_cy = int(HUD_HEIGHT + _play_h * VJOY_ANCHOR_Y_PCT)
+    _vjoy_default_cx = max(VJOY_RADIUS + 2, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 66))
+    _vjoy_default_cy = int(SCREEN_HEIGHT * VJOY_ANCHOR_Y_PCT)
     _vjoy_default_cy = max(HUD_HEIGHT + VJOY_RADIUS + 14, min(_vjoy_default_cy, SCREEN_HEIGHT - VJOY_RADIUS - 52))
     vjoy_cx = _vjoy_default_cx
     vjoy_cy = _vjoy_default_cy
