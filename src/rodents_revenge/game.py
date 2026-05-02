@@ -1686,8 +1686,8 @@ async def run_game() -> None:
             nose_x = ch_cx + cat_fx * (ch_r - 1)
             nose_y = ch_cy + 3
             pygame.draw.circle(screen, (255, 160, 150), (nose_x, nose_y), 2)
-            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y - 1), (nose_x + cat_fx * 10, nose_y - 3), 1)
-            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y + 1), (nose_x + cat_fx * 10, nose_y + 3), 1)
+            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y - 1), (nose_x - cat_fx * 10, nose_y - 3), 1)
+            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y + 1), (nose_x - cat_fx * 10, nose_y + 3), 1)
             # Legs
             pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx - 7, cb_r.bottom - 3, 9, 5))
             pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx + 2, cb_r.bottom - 3, 9, 5))
@@ -1737,8 +1737,8 @@ async def run_game() -> None:
         pygame.draw.circle(screen, (30, 30, 40), (mh_cx + fx * 3, mh_cy - 3), 2)
         pygame.draw.circle(screen, (200, 230, 255), (mh_cx + fx * 3, mh_cy - 3), 1)
         # Whiskers
-        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x + fx * 9, nose_y - 2), 1)
-        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x + fx * 9, nose_y + 2), 1)
+        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x - fx * 9, nose_y - 2), 1)
+        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x - fx * 9, nose_y + 2), 1)
         # Legs
         pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx - 6, mb_r.bottom - 3, 8, 5))
         pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx + 2, mb_r.bottom - 3, 8, 5))
