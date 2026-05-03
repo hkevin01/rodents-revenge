@@ -2,19 +2,25 @@
 
 # 🐭 Rodent Rumble
 
-**A Python/pygame-ce clone of the classic Rodent's Revenge puzzle game**
+<!-- brass-brief:intro -->
+## Executive Summary For Leadership
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![pygame-ce](https://img.shields.io/badge/pygame--ce-2.5%2B-orange?logo=pygame)](https://pyga.me/)
-[![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen?logo=pytest)](tests/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20iPad-lightgrey)](#play-on-ipad--web)
+Rodents Revenge is designed to solve a specific business and process problem, not just showcase technical capability. Rodent Rumble is an open-source Python remake of the classic Windows puzzle game Rodent's Revenge (Microsoft, 1991). Guide your mouse around a grid, push cardboard boxes to surround and trap orange cats, then collect the cheese they leave behind. The result is a more repeatable operating model where leadership can compare progress, quality, and impact with less ambiguity.
 
-*Push blocks. Trap cats. Collect cheese. Survive.*
+## Current State Without This Project
 
-</div>
+Teams lose time to repetitive setup and environment drift. This increases operational friction, slows decision cycles, and makes results harder to compare across teams.
 
----
+## Why This Project Is Needed Now
+
+This project standardizes execution patterns and reduces operational variability. As a prototype, it allows leadership to validate value early before committing to a larger rollout.
+
+## Expected Process Improvements
+
+- Faster delivery, fewer setup errors, and improved maintainability.
+- Better executive visibility into status, bottlenecks, and next priorities.
+- Clearer linkage between technical outputs and business decisions.
+- Reduced rework through standardized execution patterns.
 
 ## 📋 Table of Contents
 
@@ -134,6 +140,9 @@ python -m pygbag --build src/rodents_revenge
 
 ### Keyboard
 
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+
 | Key | Action |
 |---|---|
 | `Arrow Keys` / `WASD` | Move the mouse |
@@ -145,7 +154,15 @@ python -m pygbag --build src/rodents_revenge
 | `Esc` | Quit *(goes to menu on web)* |
 | `←` / `→` on title screen | Change difficulty |
 
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
+
 ### Touch / iPad
+
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
 
 | Gesture | Action |
 |---|---|
@@ -156,6 +173,11 @@ python -m pygbag --build src/rodents_revenge
 | Tap **SND ON / SND OFF** button | Toggle sound |
 | Tap **⬅ MENU** / **↺ RESTART** | Game-over navigation |
 | Tap **DONE** on initials screen | Submit high score initials |
+
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
 
 ---
 
@@ -183,12 +205,20 @@ python -m pygbag --build src/rodents_revenge
 
 ## Scoring
 
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+
 | Event | Points |
 |---|---|
 | Each step taken | +1 |
 | Collect a cheese tile | +25 |
 | Trap a single cat | +100 |
 | Multi-trap bonus (per extra cat beyond the first) | +150 |
+
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
 
 **Multi-trap example:** Trap 3 cats at once → `3 × 100 + 2 × 150 = 600 pts`
 
@@ -200,6 +230,9 @@ High scores are saved in your **browser (localStorage)** when playing on web, or
 
 The room changes every **10 levels**, cycling through 6 unique environments. Each theme reskins the floor, walls, and cardboard boxes.
 
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+
 | Levels | Room | Floor Style | Palette |
 |---|---|---|---|
 | 1–10 | 🍳 Kitchen | Checkerboard tile | Cream & near-black ceramic |
@@ -209,6 +242,11 @@ The room changes every **10 levels**, cycling through 6 unique environments. Eac
 | 41–50 | 🚿 Bathroom | Checkerboard tile | Sky blue & seafoam |
 | 51–60 | 🏚️ Attic | Rough planks | Dusty grey-browns |
 | 61+ | 🔄 *Cycles back* | — | — |
+
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
 
 ---
 
@@ -225,6 +263,9 @@ Ten carefully designed layouts with fixed wall structures, predefined cheese loc
 
 Levels beyond 10 use a seeded generator (seed = level number) so the same level always looks the same on every play-through. Difficulty ramps up in **tiers of 10**:
 
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+
 | Tier | Levels | Cats | Blocks |
 |---|---|---|---|
 | 0 | 11–20 | 3 | 38 |
@@ -238,6 +279,11 @@ Levels beyond 10 use a seeded generator (seed = level number) so the same level 
 | 8 | 91–100 | 7 | 70 |
 | 9 | 101–110 | 8 | 74 |
 
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
+
 ### Levels 111+ — Fully Procedural
 
 Pure random generation: up to 12 cats and dense block placement. No two runs are the same.
@@ -250,11 +296,19 @@ Pure random generation: up to 12 cats and dense block placement. No two runs are
 
 Selected on the title screen before starting a game. Cat base speed is **2000 ms per step** at level 1.
 
+<!-- brass-brief:table-pre -->
+> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+
 | Mode | Cat Speed | Cat Count |
 |---|---|---|
 | Easy | +250 ms slower (2250 ms base) | −1 cat per level |
 | Normal | baseline (2000 ms base) | baseline |
 | Hard | −125 ms faster (1875 ms base) | +1 cat per level |
+
+<!-- brass-brief:table-post -->
+> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+
+ Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
 
 ### Cat Speed Acceleration
 
