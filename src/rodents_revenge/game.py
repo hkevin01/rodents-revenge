@@ -51,13 +51,13 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 92          # larger ring improves visibility and touch comfort on tablets
-VJOY_THUMB_R = 34         # scale thumb with the larger ring so drag remains readable
+VJOY_RADIUS = 104         # another size step improves comfort on larger tablet screens
+VJOY_THUMB_R = 38         # keep the knob proportional so the joystick reads clearly
 VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
 VJOY_INITIAL_REPEAT_MS = 180   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 130           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 208   # bigger catch zone matches the larger on-screen joystick
+VJOY_TOUCH_RADIUS = 228   # match the larger ring with a broader grab zone
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
