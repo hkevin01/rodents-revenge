@@ -51,13 +51,13 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 78          # keep ring large, but allow more leftward anchor room
-VJOY_THUMB_R = 28         # match slightly smaller ring for consistent feel
+VJOY_RADIUS = 92          # larger ring improves visibility and touch comfort on tablets
+VJOY_THUMB_R = 34         # scale thumb with the larger ring so drag remains readable
 VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
 VJOY_INITIAL_REPEAT_MS = 180   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 130           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 172   # larger catch zone reduces missed grabs near stick edges
+VJOY_TOUCH_RADIUS = 208   # bigger catch zone matches the larger on-screen joystick
 VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
@@ -1199,6 +1199,78 @@ def _draw_floor_tile(
         pygame.draw.rect(surface, theme["floor_grout"], rect, 1)
 
 
+def _mix_color(
+    a: tuple[int, int, int],
+    b: tuple[int, int, int],
+    ratio: float,
+) -> tuple[int, int, int]:
+    ratio = max(0.0, min(1.0, ratio))
+    return (
+        int(a[0] + (b[0] - a[0]) * ratio),
+        int(a[1] + (b[1] - a[1]) * ratio),
+        int(a[2] + (b[2] - a[2]) * ratio),
+    )
+
+
+def _draw_room_backdrop(
+    surface: pygame.Surface,
+    board_rect: pygame.Rect,
+    theme: dict,
+) -> None:
+    """Paint subtle room-specific furniture silhouettes behind gameplay tiles."""
+    overlay = pygame.Surface(board_rect.size, pygame.SRCALPHA)
+    accent = _mix_color(theme["wall_face"], theme["floor_b"], 0.45)
+    accent_hi = _mix_color(theme["wall_face"], (255, 255, 255), 0.12)
+    outline = _mix_color(theme["wall_dark"], theme["floor_b"], 0.35)
+    rug = _mix_color(theme["floor_a"], theme["wall_face"], 0.35)
+    name = theme["name"]
+    width, height = board_rect.size
+
+    pygame.draw.rect(overlay, (*_mix_color(theme["wall_face"], theme["floor_a"], 0.25), 56), (0, 0, width, 56))
+    pygame.draw.rect(overlay, (*_mix_color(theme["wall_dark"], theme["floor_b"], 0.15), 72), (0, 42, width, 14))
+
+    if name == "Kitchen":
+        pygame.draw.rect(overlay, (*accent, 64), (36, 18, width - 72, 34), border_radius=6)
+        for x in range(64, width - 52, 112):
+            pygame.draw.rect(overlay, (*outline, 78), (x, 22, 72, 26), 2, border_radius=5)
+        pygame.draw.rect(overlay, (*outline, 84), (width - 180, 10, 92, 42), border_radius=8)
+        pygame.draw.circle(overlay, (*accent_hi, 78), (width - 134, 31), 11, 2)
+        pygame.draw.rect(overlay, (*accent, 58), (68, height - 158, 180, 82), border_radius=18)
+        pygame.draw.ellipse(overlay, (*rug, 52), (88, height - 132, 138, 36))
+    elif name == "Dining Room":
+        pygame.draw.ellipse(overlay, (*rug, 68), (width // 2 - 184, height // 2 - 108, 368, 216))
+        pygame.draw.rect(overlay, (*accent, 78), (width // 2 - 126, height // 2 - 42, 252, 84), border_radius=22)
+        for x, y in ((width // 2 - 156, height // 2 - 86), (width // 2 + 116, height // 2 - 86), (width // 2 - 156, height // 2 + 42), (width // 2 + 116, height // 2 + 42)):
+            pygame.draw.rect(overlay, (*outline, 80), (x, y, 40, 92), border_radius=10)
+    elif name == "Living Room":
+        pygame.draw.ellipse(overlay, (*rug, 64), (116, height // 2 - 92, width - 232, 200))
+        pygame.draw.rect(overlay, (*accent, 76), (84, 92, 226, 88), border_radius=18)
+        pygame.draw.rect(overlay, (*outline, 78), (72, 122, 250, 54), border_radius=18)
+        pygame.draw.rect(overlay, (*accent_hi, 70), (width - 208, 86, 124, 78), border_radius=10)
+        pygame.draw.rect(overlay, (*outline, 82), (width - 198, 96, 104, 58), 3, border_radius=10)
+        pygame.draw.ellipse(overlay, (*accent, 60), (width // 2 - 86, height // 2 - 34, 172, 68))
+    elif name == "Bedroom":
+        pygame.draw.ellipse(overlay, (*rug, 58), (130, height // 2 - 104, width - 260, 208))
+        pygame.draw.rect(overlay, (*accent, 70), (82, 86, 284, 138), border_radius=20)
+        pygame.draw.rect(overlay, (*accent_hi, 72), (88, 96, 272, 46), border_radius=16)
+        pygame.draw.rect(overlay, (*outline, 80), (382, 104, 92, 70), border_radius=10)
+        pygame.draw.rect(overlay, (*outline, 72), (width - 170, 100, 82, 142), border_radius=12)
+    elif name == "Bathroom":
+        pygame.draw.rect(overlay, (*accent_hi, 74), (72, 92, 276, 128), border_radius=26)
+        pygame.draw.rect(overlay, (*outline, 76), (86, 108, 248, 94), 3, border_radius=22)
+        pygame.draw.rect(overlay, (*accent, 66), (width - 204, 98, 114, 72), border_radius=12)
+        pygame.draw.circle(overlay, (*outline, 76), (width - 146, 136), 16, 3)
+        pygame.draw.ellipse(overlay, (*rug, 60), (width // 2 - 88, height - 180, 176, 72))
+    elif name == "Attic":
+        for offset in range(-60, width + 60, 120):
+            pygame.draw.polygon(overlay, (*outline, 72), ((offset, 0), (offset + 60, 0), (offset + 18, 126), (offset - 18, 126)))
+        pygame.draw.rect(overlay, (*accent, 62), (84, height - 176, 214, 104), border_radius=14)
+        pygame.draw.rect(overlay, (*outline, 78), (104, height - 196, 174, 42), border_radius=8)
+        pygame.draw.ellipse(overlay, (*rug, 50), (width - 270, height - 192, 184, 96))
+
+    surface.blit(overlay, board_rect.topleft)
+
+
 def _draw_wall_tile(
     surface: pygame.Surface,
     rect: pygame.Rect,
@@ -1616,17 +1688,20 @@ async def run_game() -> None:
         for y in range(state.height):
             for x in range(state.width):
                 rect = pygame.Rect(BOARD_ORIGIN_X + x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
+                _draw_floor_tile(screen, rect, x, y, _theme)
 
+        _draw_room_backdrop(screen, board_bg, _theme)
+
+        for y in range(state.height):
+            for x in range(state.width):
+                rect = pygame.Rect(BOARD_ORIGIN_X + x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
                 tile = state.board[y][x]
                 if tile == WALL:
                     _draw_wall_tile(screen, rect, _theme["wall_face"], _theme["wall_dark"])
                 elif tile == BLOCK and (x, y) not in _tween_dests:
                     _draw_block_tile(screen, rect, _theme["block_face"], _theme["block_edge"])
                 elif tile == CHEESE:
-                    _draw_floor_tile(screen, rect, x, y, _theme)
                     _draw_cheese_tile(screen, rect)
-                else:
-                    _draw_floor_tile(screen, rect, x, y, _theme)
 
         for cx, cy in state.cats:
             rect = pygame.Rect(BOARD_ORIGIN_X + cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
@@ -2122,7 +2197,7 @@ async def run_game() -> None:
                 screen.blit(ck, (r.centerx - ck.get_width() // 2, r.centery + 10))
 
         # --- PLAY button with smooth pulsing glow ---
-        play_rect = pygame.Rect(0, 0, 290, 74)
+        play_rect = pygame.Rect(0, 0, 420, 88)
         play_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
         pulse_v = (math.sin(animation_frame / 60.0 * math.pi * 2) + 1) / 2  # 0..1 smooth
         play_col = (
@@ -2140,21 +2215,28 @@ async def run_game() -> None:
         pygame.draw.rect(sh_p, (0, 0, 0, 105), sh_p.get_rect(), border_radius=18)
         screen.blit(sh_p, play_rect.move(3, 5).topleft)
         # Fill
-        pygame.draw.rect(screen, play_col, play_rect, border_radius=16)
+        pygame.draw.rect(screen, play_col, play_rect, border_radius=18)
         # Top inner sheen
         hi_p = pygame.Surface((play_rect.width - 12, play_rect.height // 2 - 4), pygame.SRCALPHA)
         pygame.draw.rect(hi_p, (255, 255, 255, 42), hi_p.get_rect(), border_radius=12)
         screen.blit(hi_p, (play_rect.x + 6, play_rect.y + 5))
         # Border
         border_g = int(130 + 90 * pulse_v)
-        pygame.draw.rect(screen, (border_g // 2, border_g, border_g // 2 + 10), play_rect, 3, border_radius=16)
+        pygame.draw.rect(screen, (border_g // 2, border_g, border_g // 2 + 10), play_rect, 3, border_radius=18)
         # Label using title_font for large readable text
-        play_lbl = title_font.render("  PLAY  ", True, (215, 255, 220))
+        play_lbl = title_font.render("TAP ANYWHERE TO START", True, (215, 255, 220))
         screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2,
                                 play_rect.centery - play_lbl.get_height() // 2))
 
+        # Full-width tap strip makes the large start area obvious.
+        tap_strip = pygame.Rect(28, SCREEN_HEIGHT - 164, SCREEN_WIDTH - 56, 120)
+        strip_surf = pygame.Surface((tap_strip.width, tap_strip.height), pygame.SRCALPHA)
+        pygame.draw.rect(strip_surf, (255, 255, 255, 18), strip_surf.get_rect(), border_radius=22)
+        screen.blit(strip_surf, tap_strip.topleft)
+        pygame.draw.rect(screen, (72, 96, 72), tap_strip, 2, border_radius=22)
+
         # "Tap anywhere" hint
-        hint = tiny_font.render("Tap anywhere to begin  •  choose difficulty first if needed", True, (96, 92, 68))
+        hint = tiny_font.render("Tap anywhere to begin  •  difficulty buttons only change difficulty", True, (96, 92, 68))
         screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 66))
 
         legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (78, 74, 56))
@@ -2204,9 +2286,9 @@ async def run_game() -> None:
                             touched_difficulty = True
                             break
                     # PLAY button (with larger touch target) or tap-anywhere fallback.
-                    play_r = pygame.Rect(0, 0, 290, 74)
+                    play_r = pygame.Rect(0, 0, 420, 88)
                     play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    play_hit_r = play_r.inflate(240, 130)
+                    play_hit_r = pygame.Rect(0, SCREEN_HEIGHT - 170, SCREEN_WIDTH, 170)
                     if play_hit_r.collidepoint(sx, sy) or not touched_difficulty:
                         _start_from_title()
                 elif phase == "playing":
@@ -2407,9 +2489,9 @@ async def run_game() -> None:
                             clicked_difficulty = True
                             break
                     # PLAY button (with larger click target) or click-anywhere fallback.
-                    play_r_m = pygame.Rect(0, 0, 290, 74)
+                    play_r_m = pygame.Rect(0, 0, 420, 88)
                     play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    play_hit_m = play_r_m.inflate(240, 130)
+                    play_hit_m = pygame.Rect(0, SCREEN_HEIGHT - 170, SCREEN_WIDTH, 170)
                     if play_hit_m.collidepoint(sx, sy) or not clicked_difficulty:
                         _start_from_title()
                 elif phase == "playing":
