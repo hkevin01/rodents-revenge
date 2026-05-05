@@ -26,8 +26,8 @@ TILE_SIZE = 40
 FPS = 60
 
 HUD_HEIGHT = 64
-CONTROL_LANE_W = 250
-ACTION_LANE_W = 180
+CONTROL_LANE_W = 340  # wider left lane keeps thumb off map
+ACTION_LANE_W = 260   # wider right lane fills screen edge
 BOARD_ORIGIN_X = CONTROL_LANE_W
 BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
 BOARD_RIGHT_X = BOARD_ORIGIN_X + BOARD_PIXEL_W
@@ -1495,9 +1495,8 @@ async def run_game() -> None:
     sound_enabled = True
 
     # --- Virtual joystick touch state ---
-    # Fixed joystick anchor in the dedicated left control lane (outside map).
-    _vjoy_default_cx = int(BOARD_ORIGIN_X * VJOY_ANCHOR_X_PCT)
-    _vjoy_default_cx = max(VJOY_RADIUS + 2, min(_vjoy_default_cx, BOARD_ORIGIN_X - VJOY_RADIUS - 66))
+    # Fixed joystick anchor: hug the far-left screen edge so thumb never overlaps the map.
+    _vjoy_default_cx = VJOY_RADIUS + 8   # ~8px from left screen edge
     _vjoy_default_cy = int(SCREEN_HEIGHT * VJOY_ANCHOR_Y_PCT)
     _vjoy_default_cy = max(HUD_HEIGHT + VJOY_RADIUS + 14, min(_vjoy_default_cy, SCREEN_HEIGHT - VJOY_RADIUS - 52))
     vjoy_cx = _vjoy_default_cx
