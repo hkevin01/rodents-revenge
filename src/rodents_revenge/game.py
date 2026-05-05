@@ -2222,12 +2222,12 @@ async def run_game() -> None:
         border_g = int(130 + 90 * pulse_v)
         pygame.draw.rect(screen, (border_g // 2, border_g, border_g // 2 + 10), play_rect, 3, border_radius=18)
         # Label using title_font for large readable text
-        play_lbl = title_font.render("  PLAY  ", True, (215, 255, 220))
+        play_lbl = title_font.render("  START  ", True, (215, 255, 220))
         screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2,
                                 play_rect.centery - play_lbl.get_height() // 2))
 
         # "Tap anywhere" hint
-        hint = tiny_font.render("Tap anywhere to begin  •  choose difficulty first if needed", True, (96, 92, 68))
+        hint = tiny_font.render("Tap START to begin  •  choose difficulty first if needed", True, (96, 92, 68))
         screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 66))
 
         legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (78, 74, 56))
@@ -2276,11 +2276,11 @@ async def run_game() -> None:
                             diff_idx = ti
                             touched_difficulty = True
                             break
-                    # PLAY button (with larger touch target) or tap-anywhere fallback.
+                    # START button with larger touch target.
                     play_r = pygame.Rect(0, 0, 420, 88)
                     play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     play_hit_r = play_r.inflate(260, 140)
-                    if play_hit_r.collidepoint(sx, sy) or not touched_difficulty:
+                    if play_hit_r.collidepoint(sx, sy):
                         _start_from_title()
                 elif phase == "playing":
                     # HUD touch buttons
@@ -2479,11 +2479,11 @@ async def run_game() -> None:
                             diff_idx = ti
                             clicked_difficulty = True
                             break
-                    # PLAY button (with larger click target) or click-anywhere fallback.
+                    # START button with larger click target.
                     play_r_m = pygame.Rect(0, 0, 420, 88)
                     play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     play_hit_m = play_r_m.inflate(260, 140)
-                    if play_hit_m.collidepoint(sx, sy) or not clicked_difficulty:
+                    if play_hit_m.collidepoint(sx, sy):
                         _start_from_title()
                 elif phase == "playing":
                     if _tbtn_pause_rect.collidepoint(sx, sy):
