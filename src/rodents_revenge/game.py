@@ -26,8 +26,8 @@ TILE_SIZE = 40
 FPS = 60
 
 HUD_HEIGHT = 64
-CONTROL_LANE_W = 340  # wider left lane keeps thumb off map
-ACTION_LANE_W = 260   # wider right lane fills screen edge
+CONTROL_LANE_W = 420  # extra-wide left lane - thumb stays off map
+ACTION_LANE_W = 360   # extra-wide right lane fills screen edge
 BOARD_ORIGIN_X = CONTROL_LANE_W
 BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
 BOARD_RIGHT_X = BOARD_ORIGIN_X + BOARD_PIXEL_W
