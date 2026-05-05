@@ -86,24 +86,16 @@ jobs:
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
           )
 
-          # Brand and polish pygbag loading/start copy.
+            # Brand and polish pygbag loading copy.
           html = html.replace("Loading, please wait ...", "Loading Rodent Rumble...")
           html = html.replace("Downloading...", "Preparing game files...")
-          html = re.sub(
-              r"Ready to start\s*!\s*Please click/touch page",
-              "Tap anywhere to start",
-              html,
-          )
-          html = html.replace(
-              '        msg  = "Ready to start ! Please click/touch page"\n        platform.window.infobox.innerText = msg',
-                '        msg  = "Tap anywhere to start"\n        platform.window.infobox.innerHTML = "<div class=\"rr-start-hit\"><div class=\"rr-start-card\"><div class=\"rr-start-icon\">🐭</div><div class=\"rr-start-title\">Rodent Rumble</div><div class=\"rr-start-cta\">Tap anywhere to start</div></div></div>"\n        platform.window.infobox.style.display = "grid"\n        platform.window.infobox.style.placeItems = "center"\n        platform.window.infobox.style.left = "0"\n        platform.window.infobox.style.top = "0"\n        platform.window.infobox.style.right = "0"\n        platform.window.infobox.style.bottom = "0"\n        platform.window.infobox.style.width = "100vw"\n        platform.window.infobox.style.height = "100vh"\n        platform.window.infobox.style.minHeight = "100vh"\n        platform.window.infobox.style.zIndex = "9999"\n        platform.window.infobox.style.pointerEvents = "auto"\n        platform.window.infobox.style.transform = "none"\n        platform.window.eval("(() => { const unlock = () => { if (window.MM) window.MM.UME = true; }; const opts = { passive: true, capture: true }; [\"pointerdown\",\"pointerup\",\"touchstart\",\"touchend\",\"click\"].forEach((ev) => { window.addEventListener(ev, unlock, opts); document.addEventListener(ev, unlock, opts); document.body.addEventListener(ev, unlock, opts); if (window.infobox) infobox.addEventListener(ev, unlock, opts); }); })()")',
-          )
-          html = re.sub(
-              r"function show_infobox\(\) \{.*?\n\}",
-              '''function show_infobox() {\n    infobox.style.display = "grid";\n    infobox.style.placeItems = "center";\n    infobox.style.left = "0";\n    infobox.style.top = "0";\n    infobox.style.right = "0";\n    infobox.style.bottom = "0";\n    infobox.style.width = "100vw";\n    infobox.style.height = "100vh";\n    infobox.style.minHeight = "100vh";\n    infobox.style.transform = "none";\n}\n''',
+            # Remove the first-touch gate so load always proceeds directly to menu.
+            html = re.sub(
+              r'\n\s*# test/wait user media interaction\n\s*if not platform\.window\.MM\.UME:\n.*?\n\s*while not platform\.window\.MM\.UME:\n\s*await asyncio\.sleep\(\.1\)\n',
+              '\n    # Auto-unlock media and skip the tap-to-start overlay.\n    try:\n        platform.window.eval("if (window.MM) window.MM.UME = true")\n        platform.window.infobox.style.display = "none"\n    except Exception:\n        pass\n',
               html,
               flags=re.S,
-          )
+            )
 
           # Inject a cleaner loader style without changing pygbag behavior.
           polished_loader_css = """
