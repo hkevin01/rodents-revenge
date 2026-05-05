@@ -83,7 +83,7 @@ jobs:
           # Replace template TODO warning with real resize behavior.
           html = html.replace(
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)\n    }',
-              '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
+              '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        const vw = window.innerWidth; const vh = window.innerHeight\n        const scale = Math.min(vw / ecw, vh / ech)\n        const w = Math.round(ecw * scale); const h = Math.round(ech * scale)\n        self.canvas.style.width = w + "px"\n        self.canvas.style.height = h + "px"\n        self.canvas.style.position = "fixed"\n        self.canvas.style.left = Math.max(0, Math.round((vw - w) / 2)) + "px"\n        self.canvas.style.top = Math.max(0, Math.round((vh - h) / 2)) + "px"\n    }',
           )
 
           # Brand and polish pygbag loading copy.
@@ -254,6 +254,13 @@ jobs:
               width: min(90vw, 920px);
             }
           }
+
+          /* Fill full viewport width on mobile */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+          }
           """
           if "Rodent Rumble loader polish" not in html:
               html = html.replace("</style>", f"\n{polished_loader_css}\n</style>", 1)
@@ -285,6 +292,34 @@ jobs:
           """
           if "window.__rrUnlockBound" not in html:
               html = html.replace("</body>", f"\n{unlock_script}\n</body>", 1)
+
+          # Re-apply canvas scaling on orientation change / resize.
+          resize_script = """
+          <script>
+          (() => {
+            if (window.__rrResizeBound) return;
+            window.__rrResizeBound = true;
+            function rrFitCanvas() {
+              const c = document.querySelector("canvas");
+              if (!c || !c.width || !c.height) return;
+              const vw = window.innerWidth, vh = window.innerHeight;
+              const scale = Math.min(vw / c.width, vh / c.height);
+              const w = Math.round(c.width * scale);
+              const h = Math.round(c.height * scale);
+              c.style.width = w + "px";
+              c.style.height = h + "px";
+              c.style.position = "fixed";
+              c.style.left = Math.max(0, Math.round((vw - w) / 2)) + "px";
+              c.style.top = Math.max(0, Math.round((vh - h) / 2)) + "px";
+            }
+            window.addEventListener("resize", rrFitCanvas);
+            setTimeout(rrFitCanvas, 500);
+            setTimeout(rrFitCanvas, 2000);
+          })();
+          </script>
+          """
+          if "window.__rrResizeBound" not in html:
+              html = html.replace("</body>", f"\n{resize_script}\n</body>", 1)
 
           short_sha = os.environ.get("SHORT_SHA", "?")
           print(f"Sanitized index.html for build {short_sha}")
