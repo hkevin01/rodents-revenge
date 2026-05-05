@@ -58,7 +58,7 @@ VJOY_INITIAL_REPEAT_MS = 260   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 200           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
 VJOY_TOUCH_RADIUS = 228   # match the larger ring with a broader grab zone
-VJOY_AXIS_LOCK_RATIO = 1.18  # bias toward the dominant axis to reduce jitter near diagonals
+VJOY_AXIS_LOCK_RATIO = 3.0   # strong cardinal bias - must be 3x dominant to switch axis
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
 VJOY_ANCHOR_X_PCT = 0.24  # keep stick farther from map edge (more left-centered)
@@ -2566,12 +2566,18 @@ async def run_game() -> None:
             d = _vjoy_dir(vjoy_offset, vjoy_active_dir)
             if d != (0, 0):
                 if d != vjoy_active_dir:
-                    # New direction: move immediately, then wait initial delay.
-                    vjoy_active_dir = d
-                    vjoy_last_dir = d
-                    vjoy_hold_ms = 0
-                    if _apply_vjoy_move(d):
-                        player_moved = True
+                    if vjoy_active_dir == (0, 0):
+                        # Fresh press from idle: respond immediately.
+                        vjoy_active_dir = d
+                        vjoy_last_dir = d
+                        vjoy_hold_ms = 0
+                        if _apply_vjoy_move(d):
+                            player_moved = True
+                    else:
+                        # Direction changed mid-hold: debounce - wait for stability.
+                        vjoy_active_dir = d
+                        vjoy_last_dir = d
+                        vjoy_hold_ms = 0
                 else:
                     vjoy_hold_ms += dt_ms
                     threshold = VJOY_INITIAL_REPEAT_MS
