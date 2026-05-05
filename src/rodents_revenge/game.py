@@ -1690,8 +1690,6 @@ async def run_game() -> None:
                 rect = pygame.Rect(BOARD_ORIGIN_X + x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
                 _draw_floor_tile(screen, rect, x, y, _theme)
 
-        _draw_room_backdrop(screen, board_bg, _theme)
-
         for y in range(state.height):
             for x in range(state.width):
                 rect = pygame.Rect(BOARD_ORIGIN_X + x * TILE_SIZE, y * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
@@ -2224,19 +2222,12 @@ async def run_game() -> None:
         border_g = int(130 + 90 * pulse_v)
         pygame.draw.rect(screen, (border_g // 2, border_g, border_g // 2 + 10), play_rect, 3, border_radius=18)
         # Label using title_font for large readable text
-        play_lbl = title_font.render("TAP ANYWHERE TO START", True, (215, 255, 220))
+        play_lbl = title_font.render("  PLAY  ", True, (215, 255, 220))
         screen.blit(play_lbl, (play_rect.centerx - play_lbl.get_width() // 2,
                                 play_rect.centery - play_lbl.get_height() // 2))
 
-        # Full-width tap strip makes the large start area obvious.
-        tap_strip = pygame.Rect(28, SCREEN_HEIGHT - 164, SCREEN_WIDTH - 56, 120)
-        strip_surf = pygame.Surface((tap_strip.width, tap_strip.height), pygame.SRCALPHA)
-        pygame.draw.rect(strip_surf, (255, 255, 255, 18), strip_surf.get_rect(), border_radius=22)
-        screen.blit(strip_surf, tap_strip.topleft)
-        pygame.draw.rect(screen, (72, 96, 72), tap_strip, 2, border_radius=22)
-
         # "Tap anywhere" hint
-        hint = tiny_font.render("Tap anywhere to begin  •  difficulty buttons only change difficulty", True, (96, 92, 68))
+        hint = tiny_font.render("Tap anywhere to begin  •  choose difficulty first if needed", True, (96, 92, 68))
         screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 66))
 
         legal1 = tiny_font.render("Inspired by classic Windows-era cat-and-mouse puzzle games", True, (78, 74, 56))
@@ -2288,7 +2279,7 @@ async def run_game() -> None:
                     # PLAY button (with larger touch target) or tap-anywhere fallback.
                     play_r = pygame.Rect(0, 0, 420, 88)
                     play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    play_hit_r = pygame.Rect(0, SCREEN_HEIGHT - 170, SCREEN_WIDTH, 170)
+                    play_hit_r = play_r.inflate(260, 140)
                     if play_hit_r.collidepoint(sx, sy) or not touched_difficulty:
                         _start_from_title()
                 elif phase == "playing":
@@ -2491,7 +2482,7 @@ async def run_game() -> None:
                     # PLAY button (with larger click target) or click-anywhere fallback.
                     play_r_m = pygame.Rect(0, 0, 420, 88)
                     play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
-                    play_hit_m = pygame.Rect(0, SCREEN_HEIGHT - 170, SCREEN_WIDTH, 170)
+                    play_hit_m = play_r_m.inflate(260, 140)
                     if play_hit_m.collidepoint(sx, sy) or not clicked_difficulty:
                         _start_from_title()
                 elif phase == "playing":

@@ -266,6 +266,34 @@ jobs:
           if "Rodent Rumble loader polish" not in html:
               html = html.replace("</style>", f"\n{polished_loader_css}\n</style>", 1)
 
+          # Add a resilient mobile unlock hook that does not rely on a specific
+          # upstream template snippet. Any first gesture should dismiss infobox
+          # and mark media engagement as unlocked.
+          unlock_script = """
+          <script>
+          (() => {
+            if (window.__rrUnlockBound) return;
+            window.__rrUnlockBound = true;
+
+            const unlock = () => {
+              try {
+                if (window.MM) window.MM.UME = true;
+              } catch (_) {}
+              const box = document.getElementById("infobox");
+              if (box) box.style.display = "none";
+            };
+
+            const opts = { passive: true, capture: true };
+            ["pointerdown", "touchstart", "touchend", "mousedown", "mouseup", "click"].forEach((ev) => {
+              window.addEventListener(ev, unlock, opts);
+              document.addEventListener(ev, unlock, opts);
+            });
+          })();
+          </script>
+          """
+          if "window.__rrUnlockBound" not in html:
+              html = html.replace("</body>", f"\n{unlock_script}\n</body>", 1)
+
           short_sha = os.environ.get("SHORT_SHA", "?")
           print(f"Sanitized index.html for build {short_sha}")
           index_path.write_text(html, encoding="utf-8")
