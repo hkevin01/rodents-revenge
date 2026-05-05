@@ -86,16 +86,16 @@ jobs:
               '    globalThis.__canvas_resized = (self, ecw, ech) => {\n        if (!self || !self.canvas) return\n        self.canvas.style.width = `${ecw}px`\n        self.canvas.style.height = `${ech}px`\n    }',
           )
 
-            # Brand and polish pygbag loading copy.
+          # Brand and polish pygbag loading copy.
           html = html.replace("Loading, please wait ...", "Loading Rodent Rumble...")
           html = html.replace("Downloading...", "Preparing game files...")
-            # Remove the first-touch gate so load always proceeds directly to menu.
-            html = re.sub(
+          # Remove the first-touch gate so load always proceeds directly to menu.
+          html = re.sub(
               r'\n\s*# test/wait user media interaction\n\s*if not platform\.window\.MM\.UME:\n.*?\n\s*while not platform\.window\.MM\.UME:\n\s*await asyncio\.sleep\(\.1\)\n',
               '\n    # Auto-unlock media and skip the tap-to-start overlay.\n    try:\n        platform.window.eval("if (window.MM) window.MM.UME = true")\n        platform.window.infobox.style.display = "none"\n    except Exception:\n        pass\n',
               html,
               flags=re.S,
-            )
+          )
 
           # Inject a cleaner loader style without changing pygbag behavior.
           polished_loader_css = """
