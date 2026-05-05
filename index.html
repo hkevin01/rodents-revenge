@@ -1,14 +1,14 @@
 <html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id="site" data-python="python3.12" data-LINES=42 data-COLUMNS=132 data-os="snd,gui" async defer>#<!--
 
 print("""
-Loading rodents_revenge_87a96cd from rodents_revenge_87a96cd.apk
+Loading rodents_revenge_b9267b2 from rodents_revenge_b9267b2.apk
     Pygbag Version : 0.9.3
     Template Version : 0.9.3
     Python  : 3.12
     CDN URL : https://pygame-web.github.io/cdn/0.9.3/
     Screen  : 1280x720
-    Title   : rodents_revenge_87a96cd
-    Folder  : rodents_revenge_87a96cd
+    Title   : rodents_revenge_b9267b2
+    Folder  : rodents_revenge_b9267b2
     Authors : pgw
     SPDX-License-Identifier: cookiecutter.spdx
 
@@ -29,22 +29,22 @@ async def custom_site():
     platform.window.canvas.style.visibility = "visible"
 
 
-    bundle = "rodents_revenge_87a96cd"
+    bundle = "rodents_revenge_b9267b2"
 
     # the C or js loader could do that but be explicit.
-    appdir = Path(f"/data/data/{bundle}") # /data/data/rodents_revenge_87a96cd
+    appdir = Path(f"/data/data/{bundle}") # /data/data/rodents_revenge_b9267b2
     appdir.mkdir()
 
 
     # unpack filesystem from compressed archive into work dir
     if platform.window.location.host.find('.itch.zone')>0:
         import zipfile
-        async with platform.fopen("rodents_revenge_87a96cd.apk", "rb") as archive:
+        async with platform.fopen("rodents_revenge_b9267b2.apk", "rb") as archive:
             with zipfile.ZipFile(archive) as zip_ref:
                 zip_ref.extractall(appdir.as_posix())
     else:
         import tarfile
-        async with platform.fopen("rodents_revenge_87a96cd.tar.gz", "rb") as archive:
+        async with platform.fopen("rodents_revenge_b9267b2.tar.gz", "rb") as archive:
             tar = tarfile.open(fileobj=archive, mode="r:gz")
             tar.extractall(path=appdir.as_posix(), filter='tar')
             tar.close()
@@ -142,7 +142,7 @@ config = {
     gui_divider : 2,
     ume_block : 1,
     can_close : 0,
-    archive : "rodents_revenge_87a96cd",
+    archive : "rodents_revenge_b9267b2",
     gui_debug : 0,
     cdn : "https://pygame-web.github.io/cdn/0.9.3/",
     autorun : 0,
@@ -169,7 +169,7 @@ function show_infobox() {
 
 </script>
 
-    <title>rodents_revenge_87a96cd</title>
+    <title>rodents_revenge_b9267b2</title>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -422,6 +422,13 @@ body {
   }
 }
 
+/* Fill full viewport width on mobile */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 </style>
 
     <script>
@@ -520,8 +527,14 @@ frameborder="1"
 
     globalThis.__canvas_resized = (self, ecw, ech) => {
         if (!self || !self.canvas) return
-        self.canvas.style.width = `${ecw}px`
-        self.canvas.style.height = `${ech}px`
+        const vw = window.innerWidth; const vh = window.innerHeight
+        const scale = Math.min(vw / ecw, vh / ech)
+        const w = Math.round(ecw * scale); const h = Math.round(ech * scale)
+        self.canvas.style.width = w + "px"
+        self.canvas.style.height = h + "px"
+        self.canvas.style.position = "fixed"
+        self.canvas.style.left = Math.max(0, Math.round((vw - w) / 2)) + "px"
+        self.canvas.style.top = Math.max(0, Math.round((vh - h) / 2)) + "px"
     }
 
     async function custom_onload(debug_hidden) {
@@ -601,6 +614,31 @@ frameborder="1"
     window.addEventListener(ev, unlock, opts);
     document.addEventListener(ev, unlock, opts);
   });
+})();
+</script>
+
+
+
+<script>
+(() => {
+  if (window.__rrResizeBound) return;
+  window.__rrResizeBound = true;
+  function rrFitCanvas() {
+    const c = document.querySelector("canvas");
+    if (!c || !c.width || !c.height) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const scale = Math.min(vw / c.width, vh / c.height);
+    const w = Math.round(c.width * scale);
+    const h = Math.round(c.height * scale);
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+    c.style.position = "fixed";
+    c.style.left = Math.max(0, Math.round((vw - w) / 2)) + "px";
+    c.style.top = Math.max(0, Math.round((vh - h) / 2)) + "px";
+  }
+  window.addEventListener("resize", rrFitCanvas);
+  setTimeout(rrFitCanvas, 500);
+  setTimeout(rrFitCanvas, 2000);
 })();
 </script>
 
