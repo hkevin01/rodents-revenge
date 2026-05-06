@@ -1715,58 +1715,58 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """Top-down mouse: oval body, round head at front, two round ears on head sides, tail at back."""
+        """8-bit side-view mouse. Drawn facing right on a temp surface, flipped for left."""
         cx, cy = center
-        fx = 1 if facing >= 0 else -1
-        s = max(10, scale)
-        body_col = (188, 186, 182)
-        body_dark = (130, 128, 124)
+        ps = max(1, scale // 12)   # one logical "pixel"
+        GW, GH = 13, 9
+        tmp = pygame.Surface((GW * ps, GH * ps), pygame.SRCALPHA)
 
-        # Body - horizontal oval, centered slightly behind cx
-        bw = s * 11 // 20
-        bh = s * 7 // 20
-        body_cx = cx - fx * (s // 14)
-        body = pygame.Rect(body_cx - bw // 2, cy - bh // 2, bw, bh)
-        pygame.draw.ellipse(surf, body_col, body)
-        # Subtle spine shadow to give volume
-        spine_r = pygame.Rect(body.x + bw // 3, body.y + 2, bw // 3, bh - 4)
-        pygame.draw.ellipse(surf, body_dark, spine_r)
+        B  = (200, 196, 192)   # body gray
+        BL = (226, 222, 218)   # top highlight
+        BS = (146, 142, 138)   # bottom shadow
+        ER = (184, 180, 176)   # ear
+        IN = (246, 174, 184)   # inner ear pink
+        TL = (158, 138, 144)   # tail
+        NS = (250, 148, 164)   # nose
+        EY = (14, 12, 18)      # eye
 
-        # Head - circle forward from body center
-        hr = s * 6 // 20
-        head_cx = body_cx + fx * (bw // 2 - hr // 3)
-        head_cy = cy
-        pygame.draw.circle(surf, body_col, (head_cx, head_cy), hr)
+        def p(x: int, y: int, c: tuple, w: int = 1, h: int = 1) -> None:
+            pygame.draw.rect(tmp, c, (x * ps, y * ps, w * ps, h * ps))
 
-        # Round ears - on top and bottom of head (perpendicular to travel direction)
-        er = max(3, s * 4 // 20)
-        for ey_off in (-hr + er // 2, hr - er // 2):
-            pygame.draw.circle(surf, body_col, (head_cx - fx * (er // 2), head_cy + ey_off), er)
-            pygame.draw.circle(surf, (240, 174, 180), (head_cx - fx * (er // 2), head_cy + ey_off), max(1, er - 2))
+        # Ear - large round shape, rows 0-2, above the head-body junction (cols 5-9)
+        p(6, 0, ER, 2)
+        p(5, 1, ER, 4)
+        p(5, 2, ER); p(6, 2, IN, 2); p(8, 2, ER)
 
-        # Eye - small dark dot on head
-        eye_x = head_cx + fx * (hr * 2 // 5)
-        pygame.draw.circle(surf, (16, 16, 20), (eye_x, head_cy - hr // 4), max(2, s // 18))
-        # Highlight on eye
-        pygame.draw.circle(surf, (220, 240, 255), (eye_x + 1, head_cy - hr // 4 - 1), 1)
+        # Tail - diagonal stub, back-left
+        p(0, 3, TL, 2)
+        p(1, 4, TL, 2)
+        p(2, 5, TL)
 
-        # Nose - pink dot at snout
-        nose_x = head_cx + fx * (hr - 1)
-        nose_y = head_cy + hr // 5
-        pygame.draw.circle(surf, (255, 160, 172), (nose_x, nose_y), max(2, s // 20))
+        # Body - rows 3-7, cols 2-6
+        p(2, 3, BL, 5)
+        p(2, 4, B,  5, 2)
+        p(2, 6, BS, 5)
+        p(3, 7, B,  3)          # lower taper
 
-        # Whiskers from nose outward (perpendicular)
-        wlen = s * 5 // 20
-        for wy_off in (-2, 2):
-            pygame.draw.line(surf, (160, 152, 148),
-                             (nose_x - fx * 2, nose_y + wy_off),
-                             (nose_x - fx * (wlen + 2), nose_y + wy_off * 2), 1)
+        # Head - rows 3-6, cols 6-11 (front, right side)
+        p(6, 3, BL, 6)
+        p(6, 4, B,  6, 2)
+        p(6, 6, BS, 6)
 
-        # Tail - thin curved line from back of body
-        tail_x0 = body_cx - fx * (bw // 2)
-        tail_x1 = tail_x0 - fx * (s * 5 // 20)
-        tail_y1 = cy + s * 3 // 20
-        pygame.draw.line(surf, (168, 148, 152), (tail_x0, cy + 2), (tail_x1, tail_y1), 2)
+        # Eye and nose
+        p(9,  4, EY)
+        p(11, 5, NS)
+
+        # Whiskers
+        pygame.draw.line(tmp, (168, 158, 154),
+                         (11 * ps, 5 * ps + ps // 2), (7 * ps, 4 * ps), 1)
+        pygame.draw.line(tmp, (168, 158, 154),
+                         (11 * ps, 5 * ps + ps // 2), (7 * ps, 6 * ps), 1)
+
+        if facing < 0:
+            tmp = pygame.transform.flip(tmp, True, False)
+        surf.blit(tmp, (cx - GW * ps // 2, cy - GH * ps // 2))
 
     def _draw_classic_cat_icon(
         surf: pygame.Surface,
@@ -1774,75 +1774,69 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """Top-down cat: oval body with stripes, round head at front, pointed triangular ears, tail at back."""
+        """8-bit side-view cat. Drawn facing right on a temp surface, flipped for left."""
         cx, cy = center
-        fx = 1 if facing >= 0 else -1
-        s = max(10, scale)
-        fur = (242, 190, 54)
-        stripe = (148, 94, 16)
-        fur_light = (254, 222, 128)
+        ps = max(1, scale // 12)
+        GW, GH = 13, 9
+        tmp = pygame.Surface((GW * ps, GH * ps), pygame.SRCALPHA)
 
-        # Body - wider oval, centered slightly behind
-        bw = s * 13 // 20
-        bh = s * 9 // 20
-        body_cx = cx - fx * (s // 14)
-        body = pygame.Rect(body_cx - bw // 2, cy - bh // 2, bw, bh)
-        pygame.draw.ellipse(surf, fur, body)
-        # Lighter center stripe along back
-        pygame.draw.ellipse(surf, fur_light, pygame.Rect(body.x + bw // 3, body.y + 3, bw // 3, bh - 6))
-        # Dark stripes across body (perpendicular to travel)
-        for sx_off in (-bw // 5, 0, bw // 5):
-            lx = body_cx + sx_off
-            pygame.draw.line(surf, stripe, (lx, body.top + 2), (lx, body.bottom - 2), 2)
+        FU = (244, 192, 54)    # fur yellow-orange
+        FK = (150, 94, 16)     # dark fur / stripes
+        FL = (255, 222, 120)   # light highlight
+        PI = (255, 170, 162)   # inner ear pink
+        GN = (56, 148, 48)     # eye iris green
+        EY = (14, 12, 16)      # eye pupil
+        NS = (252, 158, 148)   # nose
+        WH = (240, 238, 210)   # whisker
 
-        # Head - circle at front
-        hr = s * 7 // 20
-        head_cx = body_cx + fx * (bw // 2 - hr // 3)
-        head_cy = cy
-        pygame.draw.circle(surf, fur, (head_cx, head_cy), hr)
+        def p(x: int, y: int, c: tuple, w: int = 1, h: int = 1) -> None:
+            pygame.draw.rect(tmp, c, (x * ps, y * ps, w * ps, h * ps))
 
-        # Pointed triangular ears - on top and bottom of head
-        for ey_sign in (-1, 1):
-            ear_base_y = head_cy + ey_sign * (hr - 2)
-            ear_tip_y = head_cy + ey_sign * (hr + s // 9)
-            ear_pts = [
-                (head_cx - fx * (hr // 3) - 4, ear_base_y),
-                (head_cx - fx * (hr // 3) + 4, ear_base_y),
-                (head_cx - fx * (hr // 3), ear_tip_y),
-            ]
-            pygame.draw.polygon(surf, fur, ear_pts)
-            inner_pts = [
-                (head_cx - fx * (hr // 3) - 2, ear_base_y + ey_sign),
-                (head_cx - fx * (hr // 3) + 2, ear_base_y + ey_sign),
-                (head_cx - fx * (hr // 3), ear_tip_y - ey_sign * 2),
-            ]
-            pygame.draw.polygon(surf, (255, 170, 160), inner_pts)
+        # Two pointed ears above head (head = cols 6-11)
+        # Back ear: tip col 7 row 0, base cols 6-7 row 1
+        p(7, 0, FU)
+        p(6, 1, FU); p(7, 1, PI)
+        # Front ear: tip col 10 row 0, base cols 9-10 row 1
+        p(10, 0, FU)
+        p(9, 1, PI); p(10, 1, FU)
 
-        # Two eyes - slightly forward on head, offset top/bottom
-        eye_x = head_cx + fx * (hr // 3)
-        for ey_off in (-hr // 4, hr // 4):
-            pygame.draw.circle(surf, (20, 20, 20), (eye_x, head_cy + ey_off), max(2, s // 18))
-            # Yellow iris ring
-            pygame.draw.circle(surf, (240, 210, 60), (eye_x, head_cy + ey_off), max(2, s // 18), 1)
+        # Tail - thick, back-left
+        p(0, 2, FK, 3)
+        p(0, 3, FK, 2)
+        p(0, 4, FK, 2)
+        p(1, 5, FK)
 
-        # Nose - small pink circle at snout
-        nose_x = head_cx + fx * (hr - 2)
-        pygame.draw.circle(surf, (255, 160, 150), (nose_x, head_cy), max(2, s // 20))
+        # Body - rows 2-7, cols 3-7
+        p(3, 2, FL, 5)
+        p(3, 3, FU, 5, 3)
+        p(3, 6, FK, 5)
+        p(4, 7, FU, 3)          # lower taper
+
+        # Tabby stripes on body (vertical, mid rows only)
+        p(4, 3, FK, 1, 3)
+        p(6, 3, FK, 1, 3)
+
+        # Head - rows 2-7, cols 7-12
+        p(7, 2, FL, 5)
+        p(7, 3, FU, 5, 3)
+        p(7, 6, FK, 5)
+
+        # Eyes: green iris row 3, dark pupil row 4
+        p(9, 3, GN, 2)
+        p(9, 4, EY, 2)
+
+        # Nose
+        p(12, 4, NS)
 
         # Whiskers
-        wlen = s * 6 // 20
-        for wy_off in (-3, 3):
-            pygame.draw.line(surf, (230, 228, 210),
-                             (nose_x - fx * 2, head_cy + wy_off),
-                             (nose_x - fx * (wlen + 2), head_cy + wy_off), 1)
+        pygame.draw.line(tmp, WH,
+                         (12 * ps, 4 * ps + ps // 2), (8 * ps, 3 * ps), 1)
+        pygame.draw.line(tmp, WH,
+                         (12 * ps, 4 * ps + ps // 2), (8 * ps, 5 * ps + ps // 2), 1)
 
-        # Tail - thicker, hooks at the end
-        tail_x0 = body_cx - fx * (bw // 2)
-        tail_x1 = tail_x0 - fx * (s * 5 // 20)
-        tail_x2 = tail_x1 - fx * (s * 3 // 20)
-        tail_y2 = cy - s * 3 // 20
-        pygame.draw.line(surf, stripe, (tail_x0, cy), (tail_x1, cy + s // 8), 3)
-        pygame.draw.line(surf, stripe, (tail_x1, cy + s // 8), (tail_x2, tail_y2), 2)
+        if facing < 0:
+            tmp = pygame.transform.flip(tmp, True, False)
+        surf.blit(tmp, (cx - GW * ps // 2, cy - GH * ps // 2))
 
     def _draw_touch_btn(
         surf: pygame.Surface,
