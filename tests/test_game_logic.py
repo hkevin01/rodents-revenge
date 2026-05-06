@@ -72,6 +72,32 @@ def test_level_advances_after_clear_delay() -> None:
     assert state.level == 2
 
 
+def test_preset_level_mouse_spawns_near_center_and_cats_near_edges() -> None:
+    state = GameState(width=GRID_WIDTH, height=len(LEVEL_PRESETS[1]) + 2)
+
+    state.reset_level(1)
+
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
+    assert state.cats
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
+
+
+def test_seeded_level_mouse_spawns_near_center_and_cats_stay_outer() -> None:
+    state = GameState(width=GRID_WIDTH, height=len(LEVEL_PRESETS[1]) + 2)
+
+    state.reset_level(11)
+
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
+    assert state.cats
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
+
+
 def test_lives_decrease_on_cat_collision() -> None:
     state = blank_state()
     state.cats = [(3, 2)]  # one step right of the mouse
@@ -501,11 +527,16 @@ def test_level_clear_delay_next_level_is_current_plus_one() -> None:
 def test_level1_uses_preset_layout() -> None:
     state = GameState()
 
-    # Mouse and key tiles come from handcrafted preset map.
-    assert state.mouse_pos == (3, 4)
+    # Key tiles still come from the handcrafted preset map, but the mouse now
+    # starts near the center to match the classic Rodent's Revenge feel.
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
     assert state.board[2][3] == BLOCK
     assert state.board[3][7] == WALL
     assert state.board[3][15] == CHEESE
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
 
 
 def test_level1_preset_default_cat_count() -> None:
@@ -517,44 +548,60 @@ def test_level2_uses_preset_layout() -> None:
     state = GameState()
     state.reset_level(2)
 
-    assert state.mouse_pos == (3, 4)
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
     assert state.board[1][6] == WALL
     assert state.board[2][3] == BLOCK
     assert state.board[2][13] == CHEESE
     assert len(state.cats) == 2
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
 
 
 def test_level3_uses_preset_layout() -> None:
     state = GameState()
     state.reset_level(3)
 
-    assert state.mouse_pos == (3, 4)
-    assert state.board[1][5] == WALL
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
     assert state.board[2][3] == BLOCK
     assert state.board[2][11] == CHEESE
     assert len(state.cats) == 3
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
+    assert sum(tile == BLOCK for row in state.board for tile in row) >= 18
 
 
 def test_level4_uses_preset_layout() -> None:
     state = GameState()
     state.reset_level(4)
 
-    assert state.mouse_pos == (3, 4)
-    assert state.board[1][9] == WALL
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
     assert state.board[2][3] == BLOCK
     assert state.board[2][16] == CHEESE
     assert len(state.cats) == 3
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
+    assert sum(tile == BLOCK for row in state.board for tile in row) >= 20
 
 
 def test_level10_uses_preset_layout() -> None:
     state = GameState()
     state.reset_level(10)
 
-    assert state.mouse_pos == (7, 5)
-    assert state.board[1][3] == WALL
+    cx = (state.width - 1) / 2
+    cy = (state.height - 1) / 2
+    mx, my = state.mouse_pos
+    assert abs(mx - cx) + abs(my - cy) <= 6
     assert state.board[3][5] == BLOCK
     assert state.board[2][10] == CHEESE
     assert len(state.cats) == 4
+    assert all(min(x - 1, y - 1, state.width - 2 - x, state.height - 2 - y) <= 3 for x, y in state.cats)
+    assert sum(tile == BLOCK for row in state.board for tile in row) >= 28
 
 
 def test_level1_has_more_blocks_than_preset_base() -> None:

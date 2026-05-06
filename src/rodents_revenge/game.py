@@ -455,10 +455,8 @@ class GameState:
         self._place_random_cells(BLOCK, block_count)
         self._place_random_cells(CHEESE, min(3 + level, 15))
 
-        self.mouse_pos = self._find_free_cell(prefer_corner=True)
-        self.cats = []
-        for _ in range(cat_count):
-            self.cats.append(self._find_free_cell(min_distance_from=self.mouse_pos, min_distance=5))
+        self.mouse_pos = self._find_centerish_free_cell()
+        self.cats = self._find_outer_cat_spawns(cat_count, self.mouse_pos)
 
     def _apply_preset_level(self, level: int) -> bool:
         """Use handcrafted early layouts to emulate classic map pacing."""
@@ -495,16 +493,14 @@ class GameState:
         forbidden: set[tuple[int, int]] = set(cat_spawns)
         if mouse_spawn is not None:
             forbidden.add(mouse_spawn)
-        extra_blocks = min(10 + level * 3, 40)
+        extra_blocks = min(22 + level * 4, 64)
         self._place_random_cells(BLOCK, extra_blocks, forbidden=forbidden)
 
-        self.mouse_pos = mouse_spawn if mouse_spawn else self._find_free_cell(prefer_corner=True)
+        self.mouse_pos = self._find_centerish_free_cell(preferred=mouse_spawn)
 
         base_cat_count = max(1, len(cat_spawns))
         target_cat_count = max(1, base_cat_count + self.cat_count_offset)
-        self.cats = cat_spawns[:target_cat_count]
-        while len(self.cats) < target_cat_count:
-            self.cats.append(self._find_free_cell(min_distance_from=self.mouse_pos, min_distance=5))
+        self.cats = self._find_outer_cat_spawns(target_cat_count, self.mouse_pos, preferred=cat_spawns)
 
         return True
 
@@ -996,7 +992,7 @@ class GameState:
 
         tier = min((level - 11) // 10, 9)
         tier_wall_segs  = (2, 3, 3, 4, 4, 5, 5, 6, 6, 7)
-        tier_block_cnt  = (46, 50, 54, 58, 62, 66, 70, 74, 78, 82)
+        tier_block_cnt  = (64, 68, 72, 78, 84, 90, 96, 102, 108, 114)
         tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
         tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
 
@@ -1036,25 +1032,15 @@ class GameState:
             if len(free) < cat_cnt + block_cnt + cheese_cnt + 5:
                 continue
 
-            # Mouse: spawn in left third
-            left_pool = [(x, y) for x, y in free if x <= self.width // 3]
-            if not left_pool:
-                left_pool = free[:]
-            rng.shuffle(left_pool)
-            mouse = left_pool[0]
+            # Mouse: classic feel - start near board center.
+            mouse = self._find_centerish_free_cell(free_cells=free)
             self.mouse_pos = mouse
 
-            # Cats: far from mouse, spread across board
-            far_pool = sorted(
-                [(x, y) for x, y in free if (x, y) != mouse
-                 and abs(x - mouse[0]) + abs(y - mouse[1]) >= 8],
-                key=lambda c: -(abs(c[0] - mouse[0]) + abs(c[1] - mouse[1])),
-            )
-            if len(far_pool) < cat_cnt:
+            # Cats: prefer the outer ring so they close in from the edges.
+            outer_cats = self._find_outer_cat_spawns(cat_cnt, mouse, free_cells=free)
+            if len(outer_cats) < cat_cnt:
                 continue
-            spread = far_pool[:max(cat_cnt * 3, 12)]
-            rng.shuffle(spread)
-            self.cats = spread[:cat_cnt]
+            self.cats = outer_cats
 
             forbidden = {mouse} | set(self.cats)
 
@@ -1080,6 +1066,88 @@ class GameState:
     def _cat_at(self, x: int, y: int) -> bool:
         return (x, y) in self.cats
 
+    def _find_centerish_free_cell(
+        self,
+        preferred: tuple[int, int] | None = None,
+        free_cells: list[tuple[int, int]] | None = None,
+    ) -> tuple[int, int]:
+        """Pick a free cell nearest the board center for a classic mouse spawn."""
+        cells = free_cells if free_cells is not None else [
+            (x, y)
+            for y in range(1, self.height - 1)
+            for x in range(1, self.width - 1)
+            if self.board[y][x] == EMPTY
+        ]
+        if not cells:
+            return self._find_free_cell()
+
+        cx = (self.width - 1) / 2
+        cy = (self.height - 1) / 2
+        preferred_weight = 0 if preferred in cells else 1
+        return min(
+            cells,
+            key=lambda cell: (
+                0 if preferred is not None and cell == preferred else preferred_weight,
+                abs(cell[0] - cx) + abs(cell[1] - cy),
+                abs(cell[0] - cx),
+                abs(cell[1] - cy),
+            ),
+        )
+
+    def _find_outer_cat_spawns(
+        self,
+        count: int,
+        mouse_pos: tuple[int, int],
+        preferred: list[tuple[int, int]] | None = None,
+        free_cells: list[tuple[int, int]] | None = None,
+    ) -> list[tuple[int, int]]:
+        """Pick cat spawns near the outer ring, spread apart and away from the mouse."""
+        cells = free_cells if free_cells is not None else [
+            (x, y)
+            for y in range(1, self.height - 1)
+            for x in range(1, self.width - 1)
+            if self.board[y][x] == EMPTY
+        ]
+        candidates = [cell for cell in cells if cell != mouse_pos]
+        if not candidates:
+            return []
+
+        def edge_distance(cell: tuple[int, int]) -> int:
+            x, y = cell
+            return min(x - 1, y - 1, self.width - 2 - x, self.height - 2 - y)
+
+        def mouse_distance(cell: tuple[int, int]) -> int:
+            return abs(cell[0] - mouse_pos[0]) + abs(cell[1] - mouse_pos[1])
+
+        preferred_set = set(preferred or [])
+        ordered = sorted(
+            candidates,
+            key=lambda cell: (
+                0 if cell in preferred_set and edge_distance(cell) <= 2 else 1,
+                edge_distance(cell),
+                -mouse_distance(cell),
+            ),
+        )
+
+        chosen: list[tuple[int, int]] = []
+        min_spacing = 4
+        for cell in ordered:
+            if mouse_distance(cell) < 7:
+                continue
+            if any(abs(cell[0] - ox) + abs(cell[1] - oy) < min_spacing for ox, oy in chosen):
+                continue
+            chosen.append(cell)
+            if len(chosen) == count:
+                return chosen
+
+        for cell in ordered:
+            if cell not in chosen and mouse_distance(cell) >= 6:
+                chosen.append(cell)
+                if len(chosen) == count:
+                    return chosen
+
+        return chosen[:count]
+
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
 
@@ -1096,8 +1164,8 @@ ROOM_THEMES = [
         "floor_grout": (190, 185, 175),
         "wall_face": (178, 156, 118),  # terracotta / subway tile
         "wall_dark": (118, 100, 72),
-        "block_face": (218, 192, 148),
-        "block_edge": (148, 118, 78),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (185, 178, 162),
     },
     {
@@ -1108,8 +1176,8 @@ ROOM_THEMES = [
         "floor_grout": (120, 80, 40),
         "wall_face": (188, 148, 102),  # warm cream/tan wainscot
         "wall_dark": (132, 100, 65),
-        "block_face": (202, 168, 118),
-        "block_edge": (148, 112, 72),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (148, 104, 58),
     },
     {
@@ -1120,8 +1188,8 @@ ROOM_THEMES = [
         "floor_grout": (105, 38, 48),
         "wall_face": (168, 132, 98),   # warm sage/tan
         "wall_dark": (118, 92, 62),
-        "block_face": (198, 162, 112),
-        "block_edge": (142, 108, 68),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (118, 50, 60),
     },
     {
@@ -1132,8 +1200,8 @@ ROOM_THEMES = [
         "floor_grout": (155, 138, 178),
         "wall_face": (198, 178, 222),  # light lilac
         "wall_dark": (142, 124, 168),
-        "block_face": (205, 185, 228),
-        "block_edge": (155, 132, 182),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (172, 155, 198),
     },
     {
@@ -1144,8 +1212,8 @@ ROOM_THEMES = [
         "floor_grout": (155, 188, 212),
         "wall_face": (158, 200, 222),  # seafoam / aqua
         "wall_dark": (108, 158, 185),
-        "block_face": (198, 222, 238),
-        "block_edge": (122, 172, 202),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (172, 208, 228),
     },
     {
@@ -1156,8 +1224,8 @@ ROOM_THEMES = [
         "floor_grout": (108, 88, 68),
         "wall_face": (108, 92, 72),    # exposed beam / grey
         "wall_dark": (74, 62, 48),
-        "block_face": (168, 142, 110),
-        "block_edge": (118, 96, 70),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
         "grid_col": (138, 116, 92),
     },
 ]
@@ -1296,64 +1364,44 @@ def _draw_wall_tile(
 def _draw_block_tile(
     surface: pygame.Surface,
     rect: pygame.Rect,
-    face: tuple[int, int, int] = (210, 185, 140),
-    edge: tuple[int, int, int] = (145, 115, 75),
+    face: tuple[int, int, int] = (90, 201, 110),
+    edge: tuple[int, int, int] = (38, 126, 54),
 ) -> None:
-    """Draw a detailed cardboard box tile with top flaps, tape, and small lettering."""
+    """Draw a classic green block tile closer to the original game's look."""
     ts = rect.width
     x, y = rect.x, rect.y
 
-    # Cardboard colour variants from the theme face colour, shifted toward a
-    # distinctly darker brown palette.
-    r, g, b = face
-    base = (
-        max(0, min(255, 96 + (r - 170) // 7)),
-        max(0, min(255, 67 + (g - 130) // 9)),
-        max(0, min(255, 40 + (b - 95) // 12)),
-    )
-    dark = (max(0, base[0] - 28), max(0, base[1] - 20), max(0, base[2] - 14))
-    light = (min(255, base[0] + 14), min(255, base[1] + 10), min(255, base[2] + 7))
-    crease = (max(0, base[0] - 12), max(0, base[1] - 9), max(0, base[2] - 7))
-    tape = (min(255, base[0] + 7), min(255, base[1] + 6), min(255, base[2] + 4))
+    base = face
+    dark = (max(0, face[0] - 34), max(0, face[1] - 58), max(0, face[2] - 32))
+    light = (min(255, face[0] + 34), min(255, face[1] + 26), min(255, face[2] + 24))
+    crease = (max(0, face[0] - 12), max(0, face[1] - 24), max(0, face[2] - 12))
+    gem = (166, 238, 176)
 
     pad = 2
 
-    # --- Main box body (slightly inset) ---
+    # --- Main body ---
     body = pygame.Rect(x + pad, y + pad, ts - pad * 2, ts - pad * 2)
     pygame.draw.rect(surface, base, body)
 
-    # --- Right shadow strip (3D depth illusion) ---
+    # --- Right and bottom shadow strips ---
     shadow_w = max(3, ts // 7)
     shadow = pygame.Rect(body.right - shadow_w, body.y, shadow_w, body.height)
     pygame.draw.rect(surface, dark, shadow)
+    bottom_shadow = pygame.Rect(body.x, body.bottom - shadow_w, body.width, shadow_w)
+    pygame.draw.rect(surface, dark, bottom_shadow)
 
-    # --- Top flap area ---
-    flap_h = max(5, ts // 5)
-    flap_top = body.y + 3
-    flap = pygame.Rect(body.x + 1, flap_top, body.width - shadow_w - 2, flap_h)
-    pygame.draw.rect(surface, light, flap)
+    # --- Classic bevel highlight on top and left ---
+    pygame.draw.line(surface, light, (body.x + 1, body.y + 1), (body.right - shadow_w - 2, body.y + 1), 2)
+    pygame.draw.line(surface, light, (body.x + 1, body.y + 1), (body.x + 1, body.bottom - shadow_w - 2), 2)
 
-    flap_y = flap.bottom
-    mid_x = body.centerx
-    pygame.draw.line(surface, edge, (body.x, flap_y), (body.right - 1, flap_y), 1)
-    pygame.draw.line(surface, crease, (mid_x, flap.y + 1), (mid_x, flap_y - 1), 1)
-
-    # --- Tape strip across the middle of the flap (horizontal) ---
-    tape_y = flap.y + flap_h // 2 - 1
-    tape_w = max(8, flap.width - 8)
-    pygame.draw.rect(surface, tape, (flap.x + 3, tape_y, tape_w, 2))
-
-    # --- Vertical centre seam on box body (below flap) ---
-    pygame.draw.line(surface, crease, (mid_x, flap_y + 2), (mid_x, body.bottom - 2), 1)
-
-    # --- Small printed letters "BOX" along the lower body ---
-    if ts >= 24:
-        # Two tiny pixel-art dots suggesting printed text lines
-        txt_y = flap_y + (body.bottom - flap_y) // 2 - 2
-        for i in range(3):
-            dot_x = body.x + 4 + i * (ts // 10 + 2)
-            pygame.draw.rect(surface, crease, (dot_x, txt_y, max(2, ts // 12), 1))
-            pygame.draw.rect(surface, crease, (dot_x, txt_y + 3, max(2, ts // 14), 1))
+    # --- Interior panel seams to echo the original green block look ---
+    inset = max(4, ts // 5)
+    inner = pygame.Rect(body.x + inset, body.y + inset, body.width - inset * 2 - 1, body.height - inset * 2 - 1)
+    if inner.width > 4 and inner.height > 4:
+        pygame.draw.rect(surface, gem, inner)
+        pygame.draw.rect(surface, crease, inner, 1)
+        pygame.draw.line(surface, edge, inner.topleft, inner.bottomright, 1)
+        pygame.draw.line(surface, edge, (inner.right, inner.y), (inner.x, inner.bottom), 1)
 
     # --- Outer border ---
     pygame.draw.rect(surface, edge, body, 1)
