@@ -26,8 +26,8 @@ TILE_SIZE = 40
 FPS = 60
 
 HUD_HEIGHT = 64
-CONTROL_LANE_W = 420  # extra-wide left lane - thumb stays off map
-ACTION_LANE_W = 360   # extra-wide right lane fills screen edge
+CONTROL_LANE_W = 420
+ACTION_LANE_W = 360
 BOARD_ORIGIN_X = CONTROL_LANE_W
 BOARD_PIXEL_W = GRID_WIDTH * TILE_SIZE
 BOARD_RIGHT_X = BOARD_ORIGIN_X + BOARD_PIXEL_W
@@ -39,98 +39,99 @@ BLOCK = 1
 WALL = 2
 CHEESE = 3
 
-MOUSE_STEP_SCORE = 0   # original game: no points for movement
+MOUSE_STEP_SCORE = 0
 CHEESE_SCORE = 25
 TRAP_SCORE = 100
 MULTI_TRAP_BONUS = 150
 
-CAT_MOVE_DELAY_MS = 2000  # milliseconds between cat steps (device-independent)
-COUNTDOWN_STEP_MS  = 800   # ms each of 3, 2, 1 is shown
-COUNTDOWN_GO_MS    = 500   # ms "GO!" is shown
-COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
+CAT_MOVE_DELAY_MS = 2000
+COUNTDOWN_STEP_MS = 800
+COUNTDOWN_GO_MS = 500
+COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS
 GAME_TITLE = "Rodent Rumble"
 
-# --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 190         # ~1.8x larger - fills the left lane comfortably
-VJOY_THUMB_R = 68         # proportional knob (38/104 * 190)
-VJOY_DEADZONE = 30        # deadzone scaled with ring size
-VJOY_INITIAL_REPEAT_MS = 350   # delay before first held repeat on touch stick
-VJOY_REPEAT_MS = 300           # held repeat interval on touch stick (time-based)
-VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 380   # grab zone scaled with ring
-VJOY_AXIS_LOCK_RATIO = 3.0   # strong cardinal bias - must be 3x dominant to switch axis
-VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
-VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
-VJOY_ANCHOR_X_PCT = 0.24  # keep stick farther from map edge (more left-centered)
-VJOY_ANCHOR_Y_PCT = 0.50  # align stick around true screen middle
+VJOY_RADIUS = 190
+VJOY_THUMB_R = 68
+VJOY_DEADZONE = 30
+VJOY_INITIAL_REPEAT_MS = 350
+VJOY_REPEAT_MS = 300
+VJOY_FLOAT = False
+VJOY_TOUCH_RADIUS = 380
+VJOY_AXIS_LOCK_RATIO = 3.0
+VJOY_ENGAGE_PCT = 0.36
+VJOY_RELEASE_PCT = 0.24
+VJOY_ANCHOR_X_PCT = 0.24
+VJOY_ANCHOR_Y_PCT = 0.50
 
-# Keyboard hold repeat (matches virtual joystick feel)
 KEY_INITIAL_DELAY = 10
 KEY_REPEAT_EVERY = 5
 
-# Touch button layout (bottom-right HUD strip)
-TBTN_W = 90   # touch button width
-TBTN_H = 50   # touch button height
+TBTN_W = 90
+TBTN_H = 50
 
 LEVEL_PRESETS: dict[int, list[str]] = {
     1: [
         "..................",
-        "...............X..",
-        "....BBBBBBBB......",
-        "...BB......BB.....",
-        "..BB..####..BB....",
-        "..BB..B..B..BB....",
-        "..BB..B..B..BB....",
-        "..BB..B..B..BB....",
-        "..BB..####..BB....",
-        "...BB......BB.....",
-        "....BBBBBBBB......",
-        "......C...........",
+        "............X.....",
+        ".....BBBBBBBB.....",
+        "....BB######BB....",
+        "...BB#......#BB...",
+        "...BB#.BBBB.#BB...",
+        "...BB#.B..B.#BB...",
+        "...BB#.B..B.#BB...",
+        "...BB#.BBBB.#BB...",
+        "...BB#......#BB...",
+        "....BB######BB....",
+        ".....BBBBBBBB.....",
+        ".........C........",
         "..................",
     ],
     2: [
         "..................",
-        "...X........X.....",
-        "....BBBBBBBB......",
-        "...BB..####..BB...",
-        "..BB..B..B..BB....",
-        "..BB.B....B.BB....",
-        "..BB.B....B.BB....",
-        "..BB.B....B.BB....",
-        "..BB..B..B..BB....",
-        "...BB..####..BB...",
-        "....BBBBBBBB......",
-        "........C.........",
+        "..X..........X....",
+        "....BBBBBBBBBB....",
+        "...BB########BB...",
+        "...BB#..BB..#BB...",
+        "...BB#.B..B.#BB...",
+        "...BB#B....B#BB...",
+        "...BB#B....B#BB...",
+        "...BB#.B..B.#BB...",
+        "...BB#..BB..#BB...",
+        "...BB########BB...",
+        "....BBBBBBBBBB....",
+        ".........C........",
         "..................",
     ],
     3: [
         "..................",
-        "...X........X.....",
-        "....BBBBBBBB...X..",
-        "...BB.######.BB...",
-        "..BB..B....B..BB..",
+        "..X.....X.....X...",
+        "...BBBBBBBBBBBB...",
+        "..BB.########.BB..",
         "..BB.#.BBBB.#.BB..",
-        "..BB.#......#.BB..",
-        "..BB.#......#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#B....B#.BB..",
         "..BB.#.BBBB.#.BB..",
-        "..BB..B....B..BB..",
-        "...BB.######.BB...",
-        "........C.........",
+        "..BB.########.BB..",
+        "...BBBBBBBBBBBB...",
+        ".........C........",
         "..................",
     ],
     4: [
         "..................",
         "..X..........X....",
-        "...BBBBBBBBBBBB...",
+        "...BBBB..BBBB.....",
         "..BB..######..BB..",
-        "..BB.#......#.BB..",
         "..BB.#.BBBB.#.BB..",
-        "..BB.#..##..#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB..B.##.B..BB..",
+        "..BB..B.##.B..BB..",
+        "..BB.#B....B#.BB..",
         "..BB.#.BBBB.#.BB..",
-        "..BB.#......#.BB..",
         "..BB..######..BB..",
-        "...BBBBBBBBBBBBX..",
-        "........C.........",
+        "...BBBB..BBBB..X..",
+        ".........C........",
         "..................",
     ],
     5: [
@@ -140,7 +141,7 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..BB..######..BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB.#B....B#.BB..",
-        "..BB..B....B..BB..",
+        "..BB..B.##.B..BB..",
         "..BB.#B....B#.BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB..######..BB..",
@@ -156,11 +157,12 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..BB.#.BBBB.#.BB..",
         "..BB.#B....B#.BB..",
         "..BB.#B.##.B#.BB..",
-        "..BB.#B....B#.BB..",
+        "..BB..B....B..BB..",
+        "..BB.#B.##.B#.BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB.########.BB..",
         "...BBBBBBBBBBBBX..",
-        "........C.........",
+        ".........C........",
         "..................",
     ],
     7: [
@@ -170,7 +172,8 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..BB.########.BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB.#B....B#.BB..",
-        "..BB.#B....B#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#B.##.B#.BB..",
         "..BB.#B....B#.BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB.########.BB..",
@@ -183,11 +186,12 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..X....X.....X....",
         "...BBBBBBBBBBBB...",
         "..BB.########.BB..",
-        "..BB.#.BBBB.#.BB..",
+        "..BB.#..BB..#.BB..",
         "..BB.#B.##.B#.BB..",
         "..BB.#B....B#.BB..",
+        "..BB.#B....B#.BB..",
         "..BB.#B.##.B#.BB..",
-        "..BB.#.BBBB.#.BB..",
+        "..BB.#..BB..#.BB..",
         "..BB.########.BB..",
         "...BBBBBBBBBBBB...",
         "..X.......C.......",
@@ -197,13 +201,14 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..................",
         "..X....X.....X....",
         "..BBBBBBBBBBBBBB..",
-        "..BB##########BB..",
+        "..BB###BBBB###BB..",
         "..BB#..BBBB..#BB..",
+        "..BB#.#.##.#.#BB..",
         "..BB#.#....#.#BB..",
         "..BB#.#....#.#BB..",
-        "..BB#.#....#.#BB..",
+        "..BB#.#.##.#.#BB..",
         "..BB#..BBBB..#BB..",
-        "..BB##########BB..",
+        "..BB###BBBB###BB..",
         "..BBBBBBBBBBBBBB..",
         "..X.......C.......",
         "..................",
@@ -214,9 +219,10 @@ LEVEL_PRESETS: dict[int, list[str]] = {
         "..BBBB..####..BBBB",
         "..BB..##BB##..BB..",
         "..BB.#.BBBB.#.BB..",
-        "..BB.#B....B#.BB..",
+        "..BB.#B.##.B#.BB..",
         "..BB##B....B##BB..",
-        "..BB.#B....B#.BB..",
+        "..BB##B....B##BB..",
+        "..BB.#B.##.B#.BB..",
         "..BB.#.BBBB.#.BB..",
         "..BB..##BB##..BB..",
         "BBBB..####..BBBBX.",
@@ -1500,12 +1506,12 @@ async def run_game() -> None:
             pass
     pygame.display.set_icon(_make_icon())
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont("monospace", 24, bold=True)
-    small_font = pygame.font.SysFont("monospace", 20)
-    tiny_font = pygame.font.SysFont("monospace", 14)
+    font = pygame.font.SysFont("arial", 24, bold=True)
+    small_font = pygame.font.SysFont("arial", 20)
+    tiny_font = pygame.font.SysFont("arial", 14)
     sprites = _load_sprite_pack(TILE_SIZE)
-    title_font = pygame.font.SysFont("monospace", 40, bold=True)
-    big_title_font = pygame.font.SysFont("monospace", 64, bold=True)
+    title_font = pygame.font.SysFont("arial", 36, bold=True)
+    big_title_font = pygame.font.SysFont("arial", 56, bold=True)
     snd: dict[str, pygame.mixer.Sound | None] = {}
     try:
         snd["move"]  = _gen_tone(880,  0.04, vol=0.12)
@@ -1519,17 +1525,17 @@ async def run_game() -> None:
         snd = {}
 
     colors = {
-        "bg": (18, 16, 13),
-        "grid": (38, 34, 30),
-        "wall": (85, 72, 60),
-        "block": (120, 102, 84),
-        "mouse": (210, 200, 190),
-        "cat": (255, 130, 0),
+        "bg": (128, 128, 128),
+        "grid": (96, 96, 96),
+        "wall": (150, 232, 238),
+        "block": (90, 201, 110),
+        "mouse": (188, 188, 182),
+        "cat": (244, 194, 58),
         "cheese": (254, 220, 90),
-        "hud": (25, 23, 20),
-        "text": (235, 226, 206),
-        "alert": (255, 130, 130),
-        "levelup": (140, 220, 160),
+        "hud": (192, 192, 192),
+        "text": (10, 10, 10),
+        "alert": (170, 30, 30),
+        "levelup": (40, 120, 60),
     }
 
     DIFFICULTIES = ["easy", "normal", "hard"]
@@ -1687,6 +1693,94 @@ async def run_game() -> None:
             mouse_facing = d[0]
         return moved
 
+    def _draw_classic_bevel(
+        surf: pygame.Surface,
+        rect: pygame.Rect,
+        face: tuple[int, int, int],
+        light: tuple[int, int, int],
+        dark: tuple[int, int, int],
+        pressed: bool = False,
+    ) -> None:
+        pygame.draw.rect(surf, face, rect)
+        tl = dark if pressed else light
+        br = light if pressed else dark
+        pygame.draw.line(surf, tl, rect.topleft, (rect.right - 1, rect.top), 2)
+        pygame.draw.line(surf, tl, rect.topleft, (rect.left, rect.bottom - 1), 2)
+        pygame.draw.line(surf, br, (rect.left, rect.bottom - 1), (rect.right - 1, rect.bottom - 1), 2)
+        pygame.draw.line(surf, br, (rect.right - 1, rect.top), (rect.right - 1, rect.bottom - 1), 2)
+
+    def _draw_classic_mouse_icon(
+        surf: pygame.Surface,
+        center: tuple[int, int],
+        facing: int = 1,
+        scale: int = TILE_SIZE,
+    ) -> None:
+        cx, cy = center
+        fx = 1 if facing >= 0 else -1
+        body_col = (182, 182, 178)
+        shade = (116, 116, 112)
+        hi = (224, 224, 220)
+        ear_col = (212, 202, 198)
+        inner_ear = (246, 180, 188)
+        body = pygame.Rect(cx - scale // 5, cy - scale // 10, scale // 2, scale // 3)
+        head = pygame.Rect(cx + fx * (scale // 8) - scale // 7, cy - scale // 4, scale // 3, scale // 3)
+        pygame.draw.ellipse(surf, body_col, body)
+        pygame.draw.ellipse(surf, body_col, head)
+        pygame.draw.ellipse(surf, hi, pygame.Rect(body.x + 2, body.y + 2, body.width - 4, max(2, body.height // 3)))
+        pygame.draw.line(surf, shade, (body.left, body.bottom - 1), (body.right - 1, body.bottom - 1), 1)
+        ear_r = max(3, scale // 9)
+        ear_back = (head.centerx - fx * 3, head.top + 1)
+        ear_front = (head.centerx + fx * 3, head.top + 2)
+        pygame.draw.circle(surf, ear_col, ear_back, ear_r)
+        pygame.draw.circle(surf, ear_col, ear_front, ear_r)
+        pygame.draw.circle(surf, inner_ear, ear_back, max(1, ear_r // 2))
+        pygame.draw.circle(surf, inner_ear, ear_front, max(1, ear_r // 2))
+        eye = (head.centerx + fx * 2, head.centery - 2)
+        nose = (head.centerx + fx * (head.width // 2 + 1), head.centery + 2)
+        pygame.draw.circle(surf, (20, 20, 20), eye, 2)
+        pygame.draw.circle(surf, (255, 166, 176), nose, 2)
+        pygame.draw.line(surf, (164, 154, 150), nose, (nose[0] - fx * 7, nose[1] - 2), 1)
+        pygame.draw.line(surf, (164, 154, 150), nose, (nose[0] - fx * 7, nose[1] + 2), 1)
+        tail_a = (body.left - fx * 1, body.centery + 2)
+        tail_b = (tail_a[0] - fx * (scale // 4), tail_a[1] + 5)
+        pygame.draw.line(surf, (190, 160, 166), tail_a, tail_b, 2)
+
+    def _draw_classic_cat_icon(
+        surf: pygame.Surface,
+        center: tuple[int, int],
+        facing: int = 1,
+        scale: int = TILE_SIZE,
+    ) -> None:
+        cx, cy = center
+        fx = 1 if facing >= 0 else -1
+        fur = (244, 194, 58)
+        stripe = (138, 92, 18)
+        shade = (214, 152, 36)
+        body = pygame.Rect(cx - scale // 4, cy - scale // 12, scale // 2, scale // 3)
+        head = pygame.Rect(cx + fx * (scale // 7) - scale // 7, cy - scale // 4, scale // 3, scale // 3)
+        pygame.draw.ellipse(surf, fur, body)
+        pygame.draw.ellipse(surf, fur, head)
+        pygame.draw.ellipse(surf, shade, pygame.Rect(body.x + 1, body.y + body.height // 2, body.width - 2, body.height // 2))
+        ear1 = [(head.centerx - fx * 2, head.top), (head.centerx - fx * 7, head.top - 6), (head.centerx - fx * 10, head.top + 2)]
+        ear2 = [(head.centerx + fx * 4, head.top + 1), (head.centerx + fx * 9, head.top - 5), (head.centerx + fx * 11, head.top + 3)]
+        pygame.draw.polygon(surf, fur, ear1)
+        pygame.draw.polygon(surf, fur, ear2)
+        pygame.draw.line(surf, stripe, (body.centerx - 6, body.top + 1), (body.centerx - 6, body.bottom - 1), 2)
+        pygame.draw.line(surf, stripe, (body.centerx, body.top + 1), (body.centerx, body.bottom - 1), 2)
+        pygame.draw.line(surf, stripe, (body.centerx + 6, body.top + 1), (body.centerx + 6, body.bottom - 1), 2)
+        eye_y = head.centery - 2
+        pygame.draw.circle(surf, (18, 18, 18), (head.centerx - 3, eye_y), 2)
+        pygame.draw.circle(surf, (18, 18, 18), (head.centerx + 3, eye_y), 2)
+        nose = (head.centerx, head.centery + 2)
+        pygame.draw.circle(surf, (255, 164, 160), nose, 2)
+        pygame.draw.line(surf, (240, 240, 220), nose, (nose[0] - fx * 8, nose[1] - 1), 1)
+        pygame.draw.line(surf, (240, 240, 220), nose, (nose[0] - fx * 8, nose[1] + 2), 1)
+        tail_a = (body.right - fx * 1, body.top + 5)
+        tail_b = (tail_a[0] + fx * (scale // 4), tail_a[1] - 5)
+        tail_c = (tail_b[0] + fx * (scale // 8), tail_b[1] + 5)
+        pygame.draw.line(surf, shade, tail_a, tail_b, 3)
+        pygame.draw.line(surf, stripe, tail_b, tail_c, 2)
+
     def _draw_touch_btn(
         surf: pygame.Surface,
         rect: pygame.Rect,
@@ -1695,24 +1789,13 @@ async def run_game() -> None:
         text_color: tuple[int, int, int] = (220, 210, 170),
         active: bool = False,
     ) -> None:
-        """Draw a polished rounded button with highlight edge and drop-shadow."""
-        bg_col = tuple(min(255, c + 30) for c in color) if active else color  # type: ignore[assignment]
-        # Drop-shadow
-        shadow_r = rect.move(2, 3)
-        shadow_surf = pygame.Surface((shadow_r.width, shadow_r.height), pygame.SRCALPHA)
-        pygame.draw.rect(shadow_surf, (0, 0, 0, 80), shadow_surf.get_rect(), border_radius=10)
-        surf.blit(shadow_surf, shadow_r.topleft)
-        # Button fill
-        pygame.draw.rect(surf, bg_col, rect, border_radius=10)
-        # Inner top highlight (1-px lighter strip near top)
-        hi_r = pygame.Rect(rect.x + 4, rect.y + 2, rect.width - 8, rect.height // 2)
-        hi_surf = pygame.Surface((hi_r.width, hi_r.height), pygame.SRCALPHA)
-        pygame.draw.rect(hi_surf, (255, 255, 255, 28), hi_surf.get_rect(), border_radius=8)
-        surf.blit(hi_surf, hi_r.topleft)
-        # Outer border — bright top-left, dark bottom-right
-        pygame.draw.rect(surf, (180, 170, 130), rect, 2, border_radius=10)
+        """Draw a classic beveled button closer to Win3-era UI chrome."""
+        bg_col = tuple(min(255, c + 18) for c in color) if active else color  # type: ignore[assignment]
+        _draw_classic_bevel(surf, rect, bg_col, (255, 255, 255), (72, 72, 72), pressed=active)
         lbl = small_font.render(label, True, text_color)
-        surf.blit(lbl, (rect.centerx - lbl.get_width() // 2, rect.centery - lbl.get_height() // 2))
+        x_off = 1 if active else 0
+        y_off = 1 if active else 0
+        surf.blit(lbl, (rect.centerx - lbl.get_width() // 2 + x_off, rect.centery - lbl.get_height() // 2 + y_off))
 
     def draw_board() -> None:
         _tween_dests = {(tw["gx1"], tw["gy1"]) for tw in block_tweens}
@@ -1748,15 +1831,13 @@ async def run_game() -> None:
                 if cat_alert[cat] <= 0:
                     del cat_alert[cat]
         # ----------------------------------------------------------
-        # Dark background + dedicated control lane on the left keeps thumb off-map.
-        screen.fill((10, 10, 10))
+        # Windows-style chrome around the playfield.
+        screen.fill((128, 128, 128))
         lane_rect = pygame.Rect(0, HUD_HEIGHT, BOARD_ORIGIN_X, SCREEN_HEIGHT - HUD_HEIGHT)
-        pygame.draw.rect(screen, (20, 20, 20), lane_rect)
-        pygame.draw.line(screen, (44, 44, 44), (BOARD_ORIGIN_X - 1, HUD_HEIGHT), (BOARD_ORIGIN_X - 1, SCREEN_HEIGHT), 2)
+        _draw_classic_bevel(screen, lane_rect, (192, 192, 192), (255, 255, 255), (72, 72, 72))
         # Right action lane
         rlane_rect = pygame.Rect(BOARD_RIGHT_X, HUD_HEIGHT, ACTION_LANE_W, SCREEN_HEIGHT - HUD_HEIGHT)
-        pygame.draw.rect(screen, (20, 20, 20), rlane_rect)
-        pygame.draw.line(screen, (44, 44, 44), (BOARD_RIGHT_X, HUD_HEIGHT), (BOARD_RIGHT_X, SCREEN_HEIGHT), 2)
+        _draw_classic_bevel(screen, rlane_rect, (192, 192, 192), (255, 255, 255), (72, 72, 72))
 
         board_bg = pygame.Rect(BOARD_ORIGIN_X, HUD_HEIGHT, BOARD_PIXEL_W, GRID_HEIGHT * TILE_SIZE)
         pygame.draw.rect(screen, _theme["floor_a"], board_bg)
@@ -1779,117 +1860,18 @@ async def run_game() -> None:
         for cx, cy in state.cats:
             rect = pygame.Rect(BOARD_ORIGIN_X + cx * TILE_SIZE, cy * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
             if (cx, cy) in cat_alert:
-                # draw orange glow ring behind sprite
                 glow_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
                 alpha = min(180, 80 + cat_alert[(cx, cy)] * 5)
-                pygame.draw.ellipse(glow_surf, (255, 140, 0, alpha),
-                                    glow_surf.get_rect().inflate(-4, -4))
+                pygame.draw.ellipse(glow_surf, (255, 140, 0, alpha), glow_surf.get_rect().inflate(-4, -4))
                 screen.blit(glow_surf, rect.topleft)
-            # Side-profile cat — always faces toward the player
             cat_fx = 1 if cx <= mx else -1
-            cbx = rect.centerx
-            cby = rect.centery + int(math.sin(animation_frame / 9.0))
-            cbw, cbh = 28, 14
-            body_cx = cbx - cat_fx * 1
-            body_cy = cby + 4
-            cb_r = pygame.Rect(body_cx - cbw // 2, body_cy - cbh // 2, cbw, cbh)
-            ch_cx = cbx + cat_fx * 10
-            ch_cy = cby
-            ch_r = 9
-            # Tail first (body will cover its base)
-            ct_x0 = body_cx - cat_fx * (cbw // 2)
-            ct_x1 = ct_x0 - cat_fx * 8
-            ct_y1 = body_cy - 4
-            ct_x2 = ct_x1 - cat_fx * 4
-            ct_y2 = ct_y1 - 10
-            pygame.draw.line(screen, (220, 140, 55), (ct_x0, body_cy), (ct_x1, ct_y1), 3)
-            pygame.draw.line(screen, (210, 130, 50), (ct_x1, ct_y1), (ct_x2, ct_y2), 2)
-            # Body + head (covers tail base)
-            pygame.draw.ellipse(screen, (235, 158, 65), cb_r)
-            pygame.draw.circle(screen, (235, 158, 65), (ch_cx, ch_cy), ch_r)
-            # Stripes on body (3 dark arcs/lines across the body)
-            stripe_col = (185, 110, 30)
-            for si, sx_off in enumerate((-8, -1, 6)):
-                sx0 = body_cx + sx_off - 1
-                sx1 = body_cx + sx_off + 1
-                pygame.draw.line(screen, stripe_col,
-                                 (body_cx + sx_off, cb_r.top + 2),
-                                 (body_cx + sx_off, cb_r.bottom - 2), 2)
-            # Ear: pointy triangle on top of head, toward BACK, fully within head circle
-            ear_bx = ch_cx - cat_fx * max(2, ch_r // 3)  # keep ear on back side but closer to head center
-            ear_by = ch_cy - ch_r + 1      # near head top
-            ear_tip = (ear_bx, ear_by - 9)
-            ear_base_l = (ear_bx - 4, ear_by)
-            ear_base_r = (ear_bx + 4, ear_by)
-            pygame.draw.polygon(screen, (200, 105, 25), [ear_tip, ear_base_l, ear_base_r])
-            pygame.draw.polygon(screen, (255, 175, 165), [
-                (ear_bx, ear_by - 5), (ear_bx - 2, ear_by - 1), (ear_bx + 2, ear_by - 1)
-            ])
-            # Eye: yellow iris + black slit
-            eye_x = ch_cx + cat_fx * 3
-            eye_y = ch_cy - 2
-            pygame.draw.circle(screen, (255, 220, 80), (eye_x, eye_y), 3)
-            pygame.draw.circle(screen, (10, 10, 10), (eye_x, eye_y), 1)
-            # Nose + whiskers
-            nose_x = ch_cx + cat_fx * (ch_r - 1)
-            nose_y = ch_cy + 3
-            pygame.draw.circle(screen, (255, 160, 150), (nose_x, nose_y), 2)
-            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y - 1), (nose_x - cat_fx * 10, nose_y - 3), 1)
-            pygame.draw.line(screen, (220, 220, 200), (nose_x, nose_y + 1), (nose_x - cat_fx * 10, nose_y + 3), 1)
-            # Legs
-            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx - 7, cb_r.bottom - 3, 9, 5))
-            pygame.draw.ellipse(screen, (225, 148, 58), pygame.Rect(body_cx + 2, cb_r.bottom - 3, 9, 5))
+            _draw_classic_cat_icon(screen, (rect.centerx, rect.centery + int(math.sin(animation_frame / 9.0))), cat_fx, TILE_SIZE)
 
         mx, my = state.mouse_pos
         mouse_rect = pygame.Rect(BOARD_ORIGIN_X + mx * TILE_SIZE, my * TILE_SIZE + HUD_HEIGHT, TILE_SIZE, TILE_SIZE)
         bob = int(math.sin(animation_frame / 7.0) * 2)
-        # Side-profile mouse drawing (always procedural)
         fx = 1 if mouse_facing >= 0 else -1
-        bx = mouse_rect.centerx
-        by = mouse_rect.centery + bob
-        # Tail first (body overlaps its base)
-        mt_x0 = bx - fx * 11
-        mt_x1 = mt_x0 - fx * 8
-        mt_x2 = mt_x1 - fx * 5
-        pygame.draw.line(screen, (190, 180, 175), (mt_x0, by + 3), (mt_x1, by + 7), 3)
-        pygame.draw.line(screen, (178, 168, 163), (mt_x1, by + 7), (mt_x2, by + 1), 2)
-        # Body: horizontal oval
-        mbw, mbh = 24, 12
-        mb_cx = bx - fx * 2
-        mb_cy = by + 3
-        mb_r = pygame.Rect(mb_cx - mbw // 2, mb_cy - mbh // 2, mbw, mbh)
-        pygame.draw.ellipse(screen, (212, 200, 195), mb_r)
-        # Head: circle at front, overlaps body edge
-        mh_cx = bx + fx * 10
-        mh_cy = by - 1
-        mh_r = 7
-        pygame.draw.circle(screen, (212, 200, 195), (mh_cx, mh_cy), mh_r)
-        # Ear: round disc sitting on top of head, toward BACK of head
-        # Center placed at head-top so lower half overlaps head (natural mount)
-        ear_cx = mh_cx - fx * 3   # back side of head
-        ear_cy = mh_cy - mh_r     # at head top surface
-        ear_r = 5
-        pygame.draw.circle(screen, (215, 205, 200), (ear_cx, ear_cy), ear_r)
-        pygame.draw.circle(screen, (245, 180, 185), (ear_cx, ear_cy), 2)   # inner ear
-        # Snout nub
-        if fx > 0:
-            snout_r = pygame.Rect(mh_cx + mh_r - 2, mh_cy + 1, 6, 4)
-        else:
-            snout_r = pygame.Rect(mh_cx - mh_r - 4, mh_cy + 1, 6, 4)
-        pygame.draw.ellipse(screen, (225, 215, 210), snout_r)
-        # Nose
-        nose_x = mh_cx + fx * (mh_r + 4)
-        nose_y = mh_cy + 3
-        pygame.draw.circle(screen, (255, 158, 172), (nose_x, nose_y), 2)
-        # Eye: dark with highlight
-        pygame.draw.circle(screen, (30, 30, 40), (mh_cx + fx * 3, mh_cy - 3), 2)
-        pygame.draw.circle(screen, (200, 230, 255), (mh_cx + fx * 3, mh_cy - 3), 1)
-        # Whiskers
-        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x - fx * 9, nose_y - 2), 1)
-        pygame.draw.line(screen, (170, 165, 160), (nose_x, nose_y), (nose_x - fx * 9, nose_y + 2), 1)
-        # Legs
-        pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx - 6, mb_r.bottom - 3, 8, 5))
-        pygame.draw.ellipse(screen, (200, 190, 185), pygame.Rect(mb_cx + 2, mb_r.bottom - 3, 8, 5))
+        _draw_classic_mouse_icon(screen, (mouse_rect.centerx, mouse_rect.centery + bob), fx, TILE_SIZE)
 
         for tw in block_tweens:
             t = tw["t"]
@@ -1898,16 +1880,17 @@ async def run_game() -> None:
             _draw_block_tile(screen, pygame.Rect(px, py, TILE_SIZE, TILE_SIZE), _theme["block_face"], _theme["block_edge"])
 
         hud_rect = pygame.Rect(0, 0, SCREEN_WIDTH, HUD_HEIGHT)
-        pygame.draw.rect(screen, colors["hud"], hud_rect)
+        _draw_classic_bevel(screen, hud_rect, colors["hud"], (255, 255, 255), (96, 96, 96))
         hud_text = font.render(
             f"Score {state.score:05d}   Level {state.level}   Cats {len(state.cats)}",
             True,
             colors["text"],
         )
-        screen.blit(hud_text, (16, 18))
-        # Room name badge
-        room_surf = small_font.render(_theme["name"], True, (200, 188, 148))
-        screen.blit(room_surf, (16, HUD_HEIGHT - room_surf.get_height() - 4))
+        screen.blit(hud_text, (18, 10))
+        room_r = pygame.Rect(14, HUD_HEIGHT - 26, 156, 18)
+        _draw_classic_bevel(screen, room_r, (176, 176, 176), (255, 255, 255), (96, 96, 96))
+        room_surf = tiny_font.render(_theme["name"], True, (10, 10, 10))
+        screen.blit(room_surf, (room_r.centerx - room_surf.get_width() // 2, room_r.centery - room_surf.get_height() // 2))
         # Action buttons — stacked near the bottom of the right lane for right-thumb reach
         _abtn_w = ACTION_LANE_W - 20
         _abtn_h = 52
@@ -1925,15 +1908,12 @@ async def run_game() -> None:
         _snd_col = (50, 70, 50) if sound_enabled else (80, 40, 40)
         _draw_touch_btn(screen, _tbtn_sound_rect, _snd_lbl, color=_snd_col, active=False)
 
-        # Lives display — pips centered in the right lane, above the action buttons
+        # Lives display — classic mouse icons centered in the right lane, above the action buttons
         _life_cx = BOARD_RIGHT_X + ACTION_LANE_W // 2
         _life_row_y = _pause_y - 36
         for i in range(state.lives):
-            pygame.draw.circle(
-                screen, colors["mouse"],
-                (int(_life_cx + (i - (state.lives - 1) / 2) * 22), _life_row_y), 8,
-            )
-        _lives_lbl = tiny_font.render("LIVES", True, (110, 104, 82))
+            _draw_classic_mouse_icon(screen, (int(_life_cx + (i - (state.lives - 1) / 2) * 26), _life_row_y), 1, 16)
+        _lives_lbl = tiny_font.render("LIVES", True, (20, 20, 20))
         screen.blit(_lives_lbl, (_life_cx - _lives_lbl.get_width() // 2, _life_row_y + 12))
 
         if state.win_level_flash > 0:
