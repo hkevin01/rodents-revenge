@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="880" viewBox="0 0 1400 880" role="img" aria-label="Joystick release stability and anti-bounce state diagram">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#171716"/>
+      <stop offset="100%" stop-color="#0c0c0b"/>
+    </linearGradient>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd27a"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="880" fill="url(#bg2)"/>
+  <text x="40" y="54" fill="#f1dfac" font-size="34" font-family="Verdana">Joystick Release Stability - Anti-Bounce Fix</text>
+
+  <rect x="70" y="120" width="380" height="180" rx="16" fill="#2a2a27" stroke="#8f835f" stroke-width="3"/>
+  <text x="95" y="170" fill="#f1dfac" font-size="26" font-family="Verdana">State A: Hold Right</text>
+  <text x="95" y="214" fill="#d9c898" font-size="20" font-family="Verdana">direction = (1, 0)</text>
+  <text x="95" y="246" fill="#d9c898" font-size="20" font-family="Verdana">neutral_crossed = false</text>
+  <text x="95" y="278" fill="#d9c898" font-size="20" font-family="Verdana">repeat every 300ms</text>
+
+  <rect x="510" y="120" width="380" height="180" rx="16" fill="#2a2a27" stroke="#8f835f" stroke-width="3"/>
+  <text x="535" y="170" fill="#f1dfac" font-size="26" font-family="Verdana">State B: Release Jitter</text>
+  <text x="535" y="214" fill="#d9c898" font-size="20" font-family="Verdana">brief opposite signal (-1, 0)</text>
+  <text x="535" y="246" fill="#d9c898" font-size="20" font-family="Verdana">without crossing center</text>
+  <text x="535" y="278" fill="#d9c898" font-size="20" font-family="Verdana">ignore - no left move fired</text>
+
+  <rect x="950" y="120" width="380" height="180" rx="16" fill="#2a2a27" stroke="#8f835f" stroke-width="3"/>
+  <text x="975" y="170" fill="#f1dfac" font-size="26" font-family="Verdana">State C: Neutral</text>
+  <text x="975" y="214" fill="#d9c898" font-size="20" font-family="Verdana">direction = (0, 0)</text>
+  <text x="975" y="246" fill="#d9c898" font-size="20" font-family="Verdana">neutral_crossed = true</text>
+  <text x="975" y="278" fill="#d9c898" font-size="20" font-family="Verdana">ready for new direction</text>
+
+  <line x1="450" y1="210" x2="510" y2="210" stroke="#ffd27a" stroke-width="4" marker-end="url(#arrow2)"/>
+  <line x1="890" y1="210" x2="950" y2="210" stroke="#ffd27a" stroke-width="4" marker-end="url(#arrow2)"/>
+
+  <rect x="70" y="380" width="1260" height="420" rx="16" fill="#151513" stroke="#5d563f" stroke-width="2"/>
+  <text x="100" y="430" fill="#f1dfac" font-size="30" font-family="Verdana">What This Fix Prevents</text>
+
+  <circle cx="250" cy="570" r="125" fill="#1e1d1a" stroke="#9f8f66" stroke-width="7"/>
+  <circle cx="250" cy="570" r="48" fill="#d8c38a" stroke="#7f724c" stroke-width="4"/>
+  <line x1="250" y1="570" x2="355" y2="570" stroke="#8ddd8d" stroke-width="10"/>
+  <text x="190" y="735" fill="#8ddd8d" font-size="23" font-family="Verdana">Intent: RIGHT</text>
+
+  <line x1="430" y1="530" x2="640" y2="530" stroke="#ff8b8b" stroke-width="9" marker-end="url(#arrow2)"/>
+  <text x="445" y="500" fill="#ff8b8b" font-size="23" font-family="Verdana">Old glitch: random LEFT on release</text>
+
+  <line x1="430" y1="620" x2="640" y2="620" stroke="#7ec8ff" stroke-width="9" marker-end="url(#arrow2)"/>
+  <text x="445" y="660" fill="#7ec8ff" font-size="23" font-family="Verdana">New behavior: hold/neutral, then accept direction</text>
+
+  <rect x="700" y="490" width="560" height="240" rx="12" fill="#262520" stroke="#8f835f" stroke-width="2"/>
+  <text x="730" y="535" fill="#f1dfac" font-size="26" font-family="Verdana">Applied Rules</text>
+  <text x="730" y="575" fill="#d9c898" font-size="21" font-family="Verdana">1) Opposite direction requires neutral crossing.</text>
+  <text x="730" y="610" fill="#d9c898" font-size="21" font-family="Verdana">2) Mid-hold changes are debounced before movement.</text>
+  <text x="730" y="645" fill="#d9c898" font-size="21" font-family="Verdana">3) No immediate opposite-step on finger release jitter.</text>
+  <text x="730" y="680" fill="#d9c898" font-size="21" font-family="Verdana">4) Cardinal-only axis lock remains active.</text>
+
+  <text x="70" y="850" fill="#c2b792" font-size="19" font-family="Verdana">Visual aid: representative behavior model based on implemented touch state logic in game.py.</text>
+</svg>

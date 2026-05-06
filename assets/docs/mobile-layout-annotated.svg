@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1580" height="860" viewBox="0 0 1580 860" role="img" aria-label="Rodent Rumble mobile landscape layout with labeled control zones">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1916"/>
+      <stop offset="100%" stop-color="#0f0e0c"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd27a"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1580" height="860" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1580" height="64" fill="#2c2a24"/>
+
+  <rect x="0" y="64" width="420" height="796" fill="#0d0d0d"/>
+  <rect x="420" y="64" width="800" height="796" fill="#2b2924"/>
+  <rect x="1220" y="64" width="360" height="796" fill="#0d0d0d"/>
+
+  <rect x="450" y="96" width="740" height="732" fill="#35322c" stroke="#4f4b42" stroke-width="4"/>
+  <g stroke="#4a463e" stroke-width="1" opacity="0.65">
+    <line x1="500" y1="96" x2="500" y2="828"/>
+    <line x1="550" y1="96" x2="550" y2="828"/>
+    <line x1="600" y1="96" x2="600" y2="828"/>
+    <line x1="650" y1="96" x2="650" y2="828"/>
+    <line x1="700" y1="96" x2="700" y2="828"/>
+    <line x1="750" y1="96" x2="750" y2="828"/>
+    <line x1="800" y1="96" x2="800" y2="828"/>
+    <line x1="850" y1="96" x2="850" y2="828"/>
+    <line x1="900" y1="96" x2="900" y2="828"/>
+    <line x1="950" y1="96" x2="950" y2="828"/>
+    <line x1="1000" y1="96" x2="1000" y2="828"/>
+    <line x1="1050" y1="96" x2="1050" y2="828"/>
+    <line x1="1100" y1="96" x2="1100" y2="828"/>
+    <line x1="1150" y1="96" x2="1150" y2="828"/>
+    <line x1="450" y1="146" x2="1190" y2="146"/>
+    <line x1="450" y1="196" x2="1190" y2="196"/>
+    <line x1="450" y1="246" x2="1190" y2="246"/>
+    <line x1="450" y1="296" x2="1190" y2="296"/>
+    <line x1="450" y1="346" x2="1190" y2="346"/>
+    <line x1="450" y1="396" x2="1190" y2="396"/>
+    <line x1="450" y1="446" x2="1190" y2="446"/>
+    <line x1="450" y1="496" x2="1190" y2="496"/>
+    <line x1="450" y1="546" x2="1190" y2="546"/>
+    <line x1="450" y1="596" x2="1190" y2="596"/>
+    <line x1="450" y1="646" x2="1190" y2="646"/>
+    <line x1="450" y1="696" x2="1190" y2="696"/>
+    <line x1="450" y1="746" x2="1190" y2="746"/>
+    <line x1="450" y1="796" x2="1190" y2="796"/>
+  </g>
+
+  <circle cx="210" cy="430" r="190" fill="#1f1f1f" stroke="#9a916e" stroke-width="8"/>
+  <circle cx="210" cy="430" r="68" fill="#d5c28f" stroke="#7f724e" stroke-width="5"/>
+  <circle cx="210" cy="430" r="30" fill="#6f6448"/>
+
+  <rect x="1270" y="120" width="260" height="70" rx="10" fill="#4f4b42" stroke="#7f765f"/>
+  <rect x="1270" y="208" width="260" height="70" rx="10" fill="#4f4b42" stroke="#7f765f"/>
+  <rect x="1270" y="296" width="260" height="70" rx="10" fill="#4f4b42" stroke="#7f765f"/>
+  <text x="1400" y="165" text-anchor="middle" fill="#e6d4a2" font-size="28" font-family="Verdana">PAUSE</text>
+  <text x="1400" y="253" text-anchor="middle" fill="#e6d4a2" font-size="28" font-family="Verdana">HELP</text>
+  <text x="1400" y="341" text-anchor="middle" fill="#e6d4a2" font-size="28" font-family="Verdana">SOUND</text>
+
+  <text x="28" y="44" fill="#e9d6a6" font-size="26" font-family="Verdana">Rodent Rumble - Mobile Landscape Visual</text>
+
+  <text x="40" y="98" fill="#ffd27a" font-size="22" font-family="Verdana">Left Control Lane: 420px</text>
+  <line x1="300" y1="102" x2="414" y2="102" stroke="#ffd27a" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <text x="560" y="98" fill="#ffd27a" font-size="22" font-family="Verdana">Playable Board: 800px (always visible)</text>
+  <line x1="980" y1="102" x2="1188" y2="102" stroke="#ffd27a" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <text x="1218" y="98" fill="#ffd27a" font-size="22" font-family="Verdana">Right HUD Lane: 360px</text>
+  <line x1="1500" y1="102" x2="1572" y2="102" stroke="#ffd27a" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <text x="32" y="660" fill="#ffd27a" font-size="21" font-family="Verdana">Joystick radius: 190px</text>
+  <text x="32" y="690" fill="#ffd27a" font-size="21" font-family="Verdana">Center X: 210px (lane-centered)</text>
+  <text x="32" y="720" fill="#ffd27a" font-size="21" font-family="Verdana">Right edge: x=400, map starts at x=420</text>
+  <line x1="290" y1="700" x2="400" y2="620" stroke="#ffd27a" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <text x="34" y="800" fill="#d0c4a2" font-size="18" font-family="Verdana">Annotated representation - matches implemented dimensions and touch zones.</text>
+</svg>

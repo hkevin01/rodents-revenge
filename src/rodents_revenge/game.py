@@ -1508,6 +1508,7 @@ async def run_game() -> None:
     vjoy_last_dir = (0, 0)
     vjoy_hold_ms = 0
     vjoy_active_dir = (0, 0)
+    vjoy_crossed_neutral = True  # require neutral before allowing opposite direction
     key_last_dir = (0, 0)
     key_held_frames = 0
     key_left_held = False
@@ -1601,6 +1602,10 @@ async def run_game() -> None:
         if abs_x >= abs_y:
             return (1 if ox > 0 else -1, 0)
         return (0, 1 if oy > 0 else -1)
+
+    def _is_opposite_dir(a: tuple[int, int], b: tuple[int, int]) -> bool:
+        """True when directions are exact opposites on the same axis."""
+        return (a[0] != 0 and a[0] == -b[0]) or (a[1] != 0 and a[1] == -b[1])
 
     def _apply_vjoy_move(d: tuple[int, int]) -> bool:
         """Issue one grid step from joystick input; return True if player moved."""
@@ -2353,6 +2358,7 @@ async def run_game() -> None:
                             vjoy_last_dir = (0, 0)
                             vjoy_hold_ms = 0
                             vjoy_active_dir = (0, 0)
+                            vjoy_crossed_neutral = True
             elif event.type == pygame.FINGERMOTION:
                 if vjoy_active and event.finger_id == vjoy_finger_id:
                     sx, sy = _touch_to_screen(event.x, event.y)
@@ -2365,6 +2371,7 @@ async def run_game() -> None:
                     vjoy_last_dir = (0, 0)
                     vjoy_hold_ms = 0
                     vjoy_active_dir = (0, 0)
+                    vjoy_crossed_neutral = True
                     # Return joystick to default corner position
                     vjoy_cx = _vjoy_default_cx
                     vjoy_cy = _vjoy_default_cy
@@ -2567,11 +2574,20 @@ async def run_game() -> None:
             d = _vjoy_dir(vjoy_offset, vjoy_active_dir)
             if d != (0, 0):
                 if d != vjoy_active_dir:
-                    if vjoy_active_dir == (0, 0):
+                    if (
+                        vjoy_active_dir != (0, 0)
+                        and _is_opposite_dir(d, vjoy_active_dir)
+                        and not vjoy_crossed_neutral
+                    ):
+                        # Ignore release jitter that briefly reports the opposite
+                        # direction before the stick returns to center.
+                        vjoy_hold_ms = 0
+                    elif vjoy_active_dir == (0, 0):
                         # Fresh press from idle: respond immediately.
                         vjoy_active_dir = d
                         vjoy_last_dir = d
                         vjoy_hold_ms = 0
+                        vjoy_crossed_neutral = False
                         if _apply_vjoy_move(d):
                             player_moved = True
                     else:
@@ -2579,6 +2595,7 @@ async def run_game() -> None:
                         vjoy_active_dir = d
                         vjoy_last_dir = d
                         vjoy_hold_ms = 0
+                        vjoy_crossed_neutral = False
                 else:
                     vjoy_hold_ms += dt_ms
                     threshold = VJOY_INITIAL_REPEAT_MS
@@ -2590,6 +2607,7 @@ async def run_game() -> None:
                 vjoy_active_dir = (0, 0)
                 vjoy_last_dir = (0, 0)
                 vjoy_hold_ms = 0
+                vjoy_crossed_neutral = True
 
         # Auto-pause when tab/app loses focus on web/mobile, and on desktop focus loss.
         if phase == "playing" and not state.game_over:

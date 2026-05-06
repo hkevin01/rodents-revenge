@@ -208,6 +208,28 @@ The game is **fully optimized for mobile and tablet landscape play**. Here's wha
 - **Orientation-aware:** Detects orientation changes and re-centers the game on-the-fly
 - **Zero letterboxing:** Black bars only appear on very narrow devices; on typical modern phones, the game stretches edge-to-edge
 
+#### Visual Screenshots (Annotated)
+
+These are visual representations of the current mobile layout and joystick behavior, with labels to make touch zones and control flow explicit.
+
+**1) Mobile landscape layout with control zones and safe margins**
+
+![Annotated mobile landscape layout](assets/docs/mobile-layout-annotated.svg)
+
+What this shows:
+- The full width split: 420px left lane, 800px board, 360px right lane
+- Joystick center/radius placement and why it stays off-map
+- HUD button lane isolated from movement input area
+
+**2) Right-release bounce fix behavior (state flow visual)**
+
+![Joystick release stability diagram](assets/docs/joystick-release-stability.svg)
+
+What this shows:
+- The previous issue: brief opposite-direction signal when releasing from right
+- The new guard: opposite direction is ignored until neutral is crossed
+- Why this prevents accidental left movement after right input
+
 ---
 
 ## How to Play
