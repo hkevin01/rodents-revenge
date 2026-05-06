@@ -51,13 +51,13 @@ COUNTDOWN_TOTAL_MS = 3 * COUNTDOWN_STEP_MS + COUNTDOWN_GO_MS  # 2900 ms total
 GAME_TITLE = "Rodent Rumble"
 
 # --- Virtual joystick (touch / iPad) ---
-VJOY_RADIUS = 104         # another size step improves comfort on larger tablet screens
-VJOY_THUMB_R = 38         # keep the knob proportional so the joystick reads clearly
-VJOY_DEADZONE = 22        # smaller radial deadzone feels less sluggish on touch
+VJOY_RADIUS = 190         # ~1.8x larger - fills the left lane comfortably
+VJOY_THUMB_R = 68         # proportional knob (38/104 * 190)
+VJOY_DEADZONE = 30        # deadzone scaled with ring size
 VJOY_INITIAL_REPEAT_MS = 350   # delay before first held repeat on touch stick
 VJOY_REPEAT_MS = 300           # held repeat interval on touch stick (time-based)
 VJOY_FLOAT = False        # fixed bottom-left stick feels more like standard mobile controls
-VJOY_TOUCH_RADIUS = 228   # match the larger ring with a broader grab zone
+VJOY_TOUCH_RADIUS = 380   # grab zone scaled with ring
 VJOY_AXIS_LOCK_RATIO = 3.0   # strong cardinal bias - must be 3x dominant to switch axis
 VJOY_ENGAGE_PCT = 0.36    # engage threshold of max thumb travel
 VJOY_RELEASE_PCT = 0.24   # lower release threshold to prevent direction flicker
@@ -1495,8 +1495,9 @@ async def run_game() -> None:
     sound_enabled = True
 
     # --- Virtual joystick touch state ---
-    # Fixed joystick anchor: hug the far-left screen edge so thumb never overlaps the map.
-    _vjoy_default_cx = VJOY_RADIUS + 8   # ~8px from left screen edge
+    # Center the joystick horizontally in the left control lane so the large ring
+    # stays clear of both the screen edge and the map border.
+    _vjoy_default_cx = CONTROL_LANE_W // 2   # centered in left lane
     _vjoy_default_cy = int(SCREEN_HEIGHT * VJOY_ANCHOR_Y_PCT)
     _vjoy_default_cy = max(HUD_HEIGHT + VJOY_RADIUS + 14, min(_vjoy_default_cy, SCREEN_HEIGHT - VJOY_RADIUS - 52))
     vjoy_cx = _vjoy_default_cx
