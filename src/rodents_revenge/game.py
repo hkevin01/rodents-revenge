@@ -75,153 +75,153 @@ TBTN_H = 50   # touch button height
 LEVEL_PRESETS: dict[int, list[str]] = {
     1: [
         "..................",
-        "..BBB.............",
-        "......##......C...",
-        "..M...##..........",
-        "......##....BBB...",
-        "..................",
-        "....C......#......",
-        "..........###.....",
-        "...........#......",
-        "....BBB...........",
-        "..............X...",
-        "..C...............",
+        "...............X..",
+        "....BBBBBBBB......",
+        "...BB......BB.....",
+        "..BB..####..BB....",
+        "..BB..B..B..BB....",
+        "..BB..B..B..BB....",
+        "..BB..B..B..BB....",
+        "..BB..####..BB....",
+        "...BB......BB.....",
+        "....BBBBBBBB......",
+        "......C...........",
         "..................",
     ],
     2: [
-        ".....##...........",
-        "..BBB##.....C.....",
-        ".....##.....###...",
-        "..M.........#.....",
-        "....BBBB....#..X..",
-        ".................C",
-        "..###.............",
-        "...#......BBB.....",
-        "...#..............",
-        "...#....C.....X...",
         "..................",
-        "..BBB......##.....",
-        "...........##.....",
+        "...X........X.....",
+        "....BBBBBBBB......",
+        "...BB..####..BB...",
+        "..BB..B..B..BB....",
+        "..BB.B....B.BB....",
+        "..BB.B....B.BB....",
+        "..BB.B....B.BB....",
+        "..BB..B..B..BB....",
+        "...BB..####..BB...",
+        "....BBBBBBBB......",
+        "........C.........",
+        "..................",
     ],
     3: [
-        "....###...........",
-        "..B..#....C..BBB..",
-        "..B..#........#...",
-        "..M..####.....#...",
-        ".....#........#X..",
-        "..C..#..BBB...#...",
-        ".....#........#...",
-        ".....####..####...",
-        "..X......C........",
-        ".............BBB..",
-        "...###............",
-        "...#.......C...X..",
-        "...###............",
+        "..................",
+        "...X........X.....",
+        "....BBBBBBBB...X..",
+        "...BB.######.BB...",
+        "..BB..B....B..BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#......#.BB..",
+        "..BB.#......#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB..B....B..BB..",
+        "...BB.######.BB...",
+        "........C.........",
+        "..................",
     ],
     4: [
-        "........####......",
-        "..BBB....##....C..",
-        "........###.......",
-        "..M...............",
-        ".....BBBB......X..",
-        "....#.............",
-        "..C.#...###.......",
-        "....#.....#.......",
-        "....###...#..X....",
-        "..........#.......",
-        "..BBB.....#....C..",
-        "..........###.....",
-        "...............X..",
+        "..................",
+        "..X..........X....",
+        "...BBBBBBBBBBBB...",
+        "..BB..######..BB..",
+        "..BB.#......#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#..##..#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#......#.BB..",
+        "..BB..######..BB..",
+        "...BBBBBBBBBBBBX..",
+        "........C.........",
+        "..................",
     ],
     5: [
-        "..###.............",
-        "..#....BBB.....X..",
-        "..#....B.B........",
-        "..M....BBB....C...",
-        "..####........##..",
-        "......#..BBB..##..",
-        "..C...#...#.......",
-        "......#...#..X....",
-        "......#####.......",
-        "..........#....C..",
-        "..BBB.....#.......",
-        "...........###.X..",
+        "..................",
+        "..X..........X....",
+        "...BBBB..BBBB.....",
+        "..BB..######..BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB..B....B..BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB..######..BB..",
+        "...BBBB..BBBB..X..",
+        ".........C........",
         "..................",
     ],
     6: [
-        "...####...........",
-        "...#..#.....C.....",
-        "...#..#..BBB......",
-        "..M#..####....X...",
         "..................",
-        "...####..###......",
-        "......#..###...C..",
-        "..BBB.#..###......",
-        "......#...........",
-        "..X...#####....X..",
-        "...........#......",
-        "..C....BBB..#.....",
-        "...........###....",
+        "..X..........X....",
+        "...BBBBBBBBBBBB...",
+        "..BB.########.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.########.BB..",
+        "...BBBBBBBBBBBBX..",
+        "........C.........",
+        "..................",
     ],
     7: [
-        "..###.....###.....",
-        "..#.#..C..#.#..X..",
-        "..###.....###.....",
-        "......BBB.........",
-        "..M...............",
-        "....#######.......",
-        "....#.....#...C...",
-        "....#.BBB.#.......",
-        "....#.....#..X....",
-        "....#######.......",
-        ".......C........X.",
-        "..BBB.............",
-        "...............X..",
+        "..................",
+        "..X....X.....X....",
+        "...BBBBBBBBBBBB...",
+        "..BB.########.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.########.BB..",
+        "...BBBBBBBBBBBB...",
+        "..X......C........",
+        "..................",
     ],
     8: [
-        "...#####..........",
-        "...#...#...C...X..",
-        "...#.B.#..........",
-        "..M#.B.####.......",
-        "...#.B....#.......",
-        "...#####..#..BBB..",
-        "........#.#.......",
-        "..C.....#.#..X....",
-        "........#.#.......",
-        "..BBB...###.......",
-        "............C...X.",
-        "..X....####.......",
-        ".......#..........",
+        "..................",
+        "..X....X.....X....",
+        "...BBBBBBBBBBBB...",
+        "..BB.########.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#B.##.B#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.########.BB..",
+        "...BBBBBBBBBBBB...",
+        "..X.......C.......",
+        "..................",
     ],
     9: [
-        "..####........####",
-        "..#..#...C....#..#",
-        "..#..#######..#..#",
-        "..M......#....#..#",
-        "..###.BBB#....####",
-        "......#...#.......",
-        "..X...#...#...X...",
-        "......#...#..C....",
-        "..###.#####.......",
-        "......#...#....X..",
-        "..BBB.#...#.......",
-        "......#...#..C....",
-        "..X...#####.......",
+        "..................",
+        "..X....X.....X....",
+        "..BBBBBBBBBBBBBB..",
+        "..BB##########BB..",
+        "..BB#..BBBB..#BB..",
+        "..BB#.#....#.#BB..",
+        "..BB#.#....#.#BB..",
+        "..BB#.#....#.#BB..",
+        "..BB#..BBBB..#BB..",
+        "..BB##########BB..",
+        "..BBBBBBBBBBBBBB..",
+        "..X.......C.......",
+        "..................",
     ],
     10: [
-        "..#####.....#####.",
-        "..#...#..C..#...#.",
-        "..#.B.######.B.#X.",
-        "..#.B....#....B.#.",
-        "..#.B.M..#..BBB.#.",
-        "..#####..#..#####.",
-        "........##........",
-        "..X..C..##..X.....",
-        "........##........",
-        "..#####..#..#####.",
-        "..#...#..#..#...#.",
-        "..#.B.######.B.#X.",
-        "..#####.....#####.",
+        "..................",
+        "..X....X.....X....",
+        "..BBBB..####..BBBB",
+        "..BB..##BB##..BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB.#B....B#.BB..",
+        "..BB##B....B##BB..",
+        "..BB.#B....B#.BB..",
+        "..BB.#.BBBB.#.BB..",
+        "..BB..##BB##..BB..",
+        "BBBB..####..BBBBX.",
+        "........C.........",
+        "..................",
     ],
 }
 
@@ -453,7 +453,7 @@ class GameState:
 
         self._place_random_cells(WALL, wall_count)
         self._place_random_cells(BLOCK, block_count)
-        self._place_random_cells(CHEESE, min(3 + level, 15))
+        self._place_random_cells(CHEESE, min(1 + level // 20, 4))
 
         self.mouse_pos = self._find_centerish_free_cell()
         self.cats = self._find_outer_cat_spawns(cat_count, self.mouse_pos)
@@ -993,7 +993,7 @@ class GameState:
         tier = min((level - 11) // 10, 9)
         tier_wall_segs  = (2, 3, 3, 4, 4, 5, 5, 6, 6, 7)
         tier_block_cnt  = (64, 68, 72, 78, 84, 90, 96, 102, 108, 114)
-        tier_cheese_cnt = ( 5,  4,  4,  3,  3,  3,  2,  2,  2,  2)
+        tier_cheese_cnt = ( 1,  1,  1,  1,  1,  1,  2,  2,  2,  2)
         tier_cat_cnt    = ( 3,  3,  4,  4,  5,  5,  6,  6,  7,  8)
 
         wall_segs  = tier_wall_segs[tier]
@@ -1234,7 +1234,19 @@ ROOM_THEMES = [
 def get_room_theme(level: int) -> dict:
     """Return the room theme dict for the given level (cycles every 10 levels)."""
     idx = (level - 1) // 10 % len(ROOM_THEMES)
-    return ROOM_THEMES[idx]
+    theme = ROOM_THEMES[idx].copy()
+    theme.update({
+        "floor_style": "classic",
+        "floor_a": (136, 128, 18),
+        "floor_b": (122, 116, 16),
+        "floor_grout": (106, 100, 14),
+        "wall_face": (150, 232, 238),
+        "wall_dark": (74, 172, 178),
+        "block_face": (90, 201, 110),
+        "block_edge": (38, 126, 54),
+        "grid_col": (112, 106, 16),
+    })
+    return theme
 
 
 def _draw_floor_tile(
@@ -1246,7 +1258,14 @@ def _draw_floor_tile(
 ) -> None:
     """Draw a single floor tile with the room's pattern."""
     style = theme["floor_style"]
-    if style == "checker":
+    if style == "classic":
+        col = theme["floor_a"] if (gx + gy * 2) % 5 < 3 else theme["floor_b"]
+        pygame.draw.rect(surface, col, rect)
+        if (gx * 3 + gy) % 7 == 0:
+            speck = pygame.Rect(rect.x + rect.w // 3, rect.y + rect.h // 3, max(1, rect.w // 8), max(1, rect.h // 8))
+            pygame.draw.rect(surface, theme["floor_grout"], speck)
+        pygame.draw.rect(surface, theme["grid_col"], rect, 1)
+    elif style == "checker":
         col = theme["floor_a"] if (gx + gy) % 2 == 0 else theme["floor_b"]
         pygame.draw.rect(surface, col, rect)
         # thin grout line
@@ -1346,19 +1365,22 @@ def _draw_wall_tile(
     dark: tuple[int, int, int] = (42, 35, 28),
 ) -> None:
     ts = rect.width
-    pygame.draw.rect(surface, face, rect.inflate(-2, -2))
-    for row in range(1, 3):
-        y = rect.y + row * ts // 3
-        pygame.draw.line(surface, dark, (rect.x + 2, y), (rect.x + ts - 3, y), 1)
-    for row in range(3):
-        y0 = rect.y + row * ts // 3 + 1
-        y1 = rect.y + (row + 1) * ts // 3 - 1
-        if row % 2 == 0:
-            x = rect.x + ts // 2
-            pygame.draw.line(surface, dark, (x, y0), (x, y1), 1)
-        else:
-            for x in (rect.x + ts // 4, rect.x + 3 * ts // 4):
-                pygame.draw.line(surface, dark, (x, y0), (x, y1), 1)
+    light = (min(255, face[0] + 26), min(255, face[1] + 18), min(255, face[2] + 14))
+    inner = (184, 244, 246)
+    outer = rect.inflate(-2, -2)
+    pygame.draw.rect(surface, face, outer)
+    pygame.draw.line(surface, light, outer.topleft, (outer.right - 1, outer.top), 2)
+    pygame.draw.line(surface, light, outer.topleft, (outer.left, outer.bottom - 1), 2)
+    pygame.draw.line(surface, dark, (outer.left, outer.bottom - 1), (outer.right - 1, outer.bottom - 1), 2)
+    pygame.draw.line(surface, dark, (outer.right - 1, outer.top), (outer.right - 1, outer.bottom - 1), 2)
+    inset = max(4, ts // 5)
+    gem = pygame.Rect(outer.x + inset, outer.y + inset, outer.width - inset * 2, outer.height - inset * 2)
+    if gem.width > 4 and gem.height > 4:
+        pygame.draw.rect(surface, inner, gem)
+        pygame.draw.rect(surface, dark, gem, 1)
+        swirl_y = gem.centery
+        pygame.draw.line(surface, dark, (gem.x + 2, swirl_y), (gem.right - 3, swirl_y), 1)
+        pygame.draw.line(surface, dark, (gem.centerx, gem.y + 2), (gem.centerx, gem.bottom - 3), 1)
 
 
 def _draw_block_tile(
