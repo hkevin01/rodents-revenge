@@ -179,6 +179,35 @@ python -m pygbag --build src/rodents_revenge
 
  Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
 
+### Mobile Optimization — Landscape Layout & Joystick Tuning
+
+The game is **fully optimized for mobile and tablet landscape play**. Here's what makes touch controls feel native:
+
+#### Screen Layout
+- **Left dark zone (420px):** Houses the large virtual joystick, keeping your thumb completely clear of the game board
+- **Center game board (800px):** Fully visible grid of walls, blocks, cheese, cats, and mouse
+- **Right dark zone (360px):** HUD buttons (PAUSE, HELP, SOUND, MENU/RESTART) positioned away from active play area
+- **Total width (1580px):** Scales responsively to fill landscape phones (e.g., iPhone 14 Pro landscape ≈ 844px) with perfect fit
+
+#### Virtual Joystick  
+**Fixed anchor, non-floating design** ensures your thumb doesn't drift during intense gameplay:
+- **Radius:** 190px (~1.8x the original) — fills the left lane, easy to target and control
+- **Thumb knob:** 68px diameter — large enough for confident drags, proportional to the ring
+- **Touch grab zone:** 380px radius — responsive even if your finger drifts slightly  
+- **Center position:** Horizontally centered in the left lane (210px from left edge) — maximum clearance from both the screen edge and the game board
+- **Auto-return:** Returns to default position when you release, ready for the next move
+
+#### Movement & Responsiveness
+- **Cardinal-only directions:** Left, right, up, down — **no diagonal moves**. Strong 3x axis-lock bias prevents jitter when dragging near 45° angles
+- **Debounced direction changes:** Direction switches mid-hold no longer fire immediate moves; instead, the joystick waits for stability before responding  
+- **Repeat timing:** 350ms initial delay before auto-repeat, then 300ms per step. Feels deliberate and gives you time to aim  
+- **Responsive grid stepping:** Each move fires once per repeat interval; no spam, no missed inputs
+
+#### Canvas Auto-Scaling
+- **Fills landscape viewport:** The game canvas automatically scales to fill your device width while maintaining aspect ratio
+- **Orientation-aware:** Detects orientation changes and re-centers the game on-the-fly
+- **Zero letterboxing:** Black bars only appear on very narrow devices; on typical modern phones, the game stretches edge-to-edge
+
 ---
 
 ## How to Play
