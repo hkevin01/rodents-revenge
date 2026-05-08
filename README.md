@@ -1,450 +1,356 @@
+# Rodent's Revenge - Python Fan Remake
+
 <div align="center">
 
-# 🐭 Rodent Rumble
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Pygame-ce](https://img.shields.io/badge/pygame--ce-2.x-0A0A0A)
+![Tests](https://img.shields.io/badge/tests-48%20passing-2EA043)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-555)
+![Web Build](https://img.shields.io/badge/web-pygbag%20WASM-1F6FEB)
 
-<!-- brass-brief:intro -->
-## Executive Summary For Leadership
+Unofficial open-source remake inspired by the classic Microsoft game Rodent's Revenge (1991).
 
-Rodents Revenge is designed to solve a specific business and process problem, not just showcase technical capability. Rodent Rumble is an open-source Python remake of the classic Windows puzzle game Rodent's Revenge (Microsoft, 1991). Guide your mouse around a grid, push cardboard boxes to surround and trap orange cats, then collect the cheese they leave behind. The result is a more repeatable operating model where leadership can compare progress, quality, and impact with less ambiguity.
-
-## Current State Without This Project
-
-Teams lose time to repetitive setup and environment drift. This increases operational friction, slows decision cycles, and makes results harder to compare across teams.
-
-## Why This Project Is Needed Now
-
-This project standardizes execution patterns and reduces operational variability. As a prototype, it allows leadership to validate value early before committing to a larger rollout.
-
-## Expected Process Improvements
-
-- Faster delivery, fewer setup errors, and improved maintainability.
-- Better executive visibility into status, bottlenecks, and next priorities.
-- Clearer linkage between technical outputs and business decisions.
-- Reduced rework through standardized execution patterns.
-
-## 📋 Table of Contents
-
-- [About](#about)
-- [Features](#features)
-- [Play on iPad / Web](#play-on-ipad--web)
-- [Quick Start](#quick-start)
-- [Controls](#controls)
-- [How to Play](#how-to-play)
-- [Scoring](#scoring)
-- [Room Themes](#room-themes)
-- [Level Progression](#level-progression)
-- [Difficulty Modes](#difficulty-modes)
-- [Project Structure](#project-structure)
-- [Docker](#docker)
-- [Running Tests](#running-tests)
-- [Contributing](#contributing)
-
----
-
-## About
-
-Rodent Rumble is an open-source Python remake of the classic Windows puzzle game *Rodent's Revenge* (Microsoft, 1991). Guide your mouse around a grid, push cardboard boxes to surround and trap orange cats, then collect the cheese they leave behind.
-
-Built with **pygame-ce** and fully playable in a browser on **iPad** via [pygbag](https://pygame-web.github.io/) WebAssembly — no install required.
-
----
-
-## Features
-
-- [x] **6 hand-crafted room themes** — Kitchen, Dining Room, Living Room, Bedroom, Bathroom, Attic — cycling every 10 levels
-- [x] **3 difficulty modes** — Easy, Normal, Hard with adjusted cat speed and count
-- [x] **10 hand-designed levels** followed by seeded procedural generation up to level 100+
-- [x] **Multi-trap combo scoring** — trap multiple cats in one move for big bonuses
-- [x] **Diagonal cat movement** — cats can move diagonally, making trapping more challenging
-- [x] **3-2-1-GO countdown** on level start, level-up, and respawn — cats can't move until GO
-- [x] **Cat speed acceleration** — ramps up every level, with steeper acceleration past level 20
-- [x] **Floating virtual joystick** for iPad / touchscreen play
-- [x] **Animated sprites** with graceful fallback to procedural vector art
-- [x] **Persistent high scores** — top 10 with 3-letter initials, saved per-browser on web
-- [x] **Line-of-sight cat alerts** — orange glow when a cat has a clear shot at you
-- [x] **Block-push tweening** — smooth animation when shoving boxes
-- [x] **Procedural sound effects** — no external audio files needed
-- [x] **Sound toggle** — mute/unmute via the HUD button or `M` key
-- [x] **Polished title screen** — animated PLAY button, high scores panel, difficulty selector
-- [x] **Docker support** for headless CI testing
-
----
-
-## Play on iPad / Web
+</div>
 
 > [!IMPORTANT]
-> The game compiles to **WebAssembly** via [pygbag](https://pygame-web.github.io/) and runs directly in Safari on iPad (iOS 15+) or any modern browser — no App Store, no install.
+> This project is a fan remake and is not affiliated with Microsoft. It is built for nostalgia, learning, and gameplay experimentation.
 
-**Live URL (after first GitHub Actions deploy):**
-```
-https://hkevin01.github.io/rodents-revenge/
-```
+## Table Of Contents
 
-### Deploy to GitHub Pages yourself
+- [What This Project Is](#what-this-project-is)
+- [Current Status](#current-status)
+- [Gameplay Summary](#gameplay-summary)
+- [How Scoring Works](#how-scoring-works)
+- [Visual Style And Fidelity Direction](#visual-style-and-fidelity-direction)
+- [Mobile And Web Experience](#mobile-and-web-experience)
+- [Annotated Visuals](#annotated-visuals)
+- [Installation And Quick Start](#installation-and-quick-start)
+- [Controls](#controls)
+- [Difficulty Modes](#difficulty-modes)
+- [Level Design Model](#level-design-model)
+- [Why Some Maps Felt Impossible](#why-some-maps-felt-impossible)
+- [Architecture Overview](#architecture-overview)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Docker](#docker)
+- [Web Deployment](#web-deployment)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [Credits And Attribution](#credits-and-attribution)
 
-1. Push this repo to GitHub
-2. Go to **Settings → Pages** → set source branch to `gh-pages`
-3. Go to **Settings → Actions → General** → set Workflow permissions to **Read and write**
-4. Trigger the **"Build & Deploy to GitHub Pages"** action from the **Actions** tab
+## What This Project Is
 
-The workflow at [.github/workflows/pygbag.yml](.github/workflows/pygbag.yml) builds and deploys automatically on every push to `main`.
+This repository contains a full gameplay implementation of a Rodent's Revenge style puzzle game using Python and pygame-ce. The core loop is intentionally faithful to the original feel: cats pursue the mouse, the player pushes blocks to trap cats, trapped cats turn into cheese, and levels escalate pressure over time.
+
+The project is also designed to run in browsers through pygbag/WebAssembly, so the same game logic is playable on desktop and on touch devices without a separate codebase.
+
+## Current Status
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Core gameplay loop | Complete | Cat AI, trapping, scoring, level clear flow are stable |
+| Preset levels (1-10) | Active tuning | Being refined for classic feel and solvability |
+| Procedural levels (11+) | Complete | Seeded generation with density progression |
+| Desktop controls | Complete | Keyboard first-class support |
+| Mobile controls | Complete | Fixed joystick + touch action buttons |
+| Web deployment | Complete | GitHub Actions + GitHub Pages |
+| Automated tests | Complete | 48 gameplay tests currently passing |
+
+> [!NOTE]
+> The game title and loading copy use Rodent's Revenge naming consistently.
+
+## Gameplay Summary
+
+The mouse survives by manipulating pushable blocks and controlling space. Cats are threats that become resources only after being trapped. That trap-first rhythm is the heart of the game design, and everything in level layout should support this: open routes for setup, pressure from cat entry points, and enough movable blocks to create tactical options.
+
+### Win Condition
+
+1. Trap all cats in the room.
+2. Cats convert into cheese.
+3. Optionally collect cheese for bonus points.
+4. Advance to the next room.
+
+### Lose Condition
+
+- Contact with a cat costs a life.
+- Lose all lives and the run ends.
+
+## How Scoring Works
+
+| Event | Points |
+| --- | --- |
+| Move step | 0 |
+| Cheese pickup | +25 |
+| Single trapped cat | +100 |
+| Multi-trap bonus (per extra cat) | +150 |
+| Level clear bonus | +300 |
+
+### Combo Formula
+
+For $n$ cats trapped in one resolution step:
+
+$$
+\text{trap score} = n \cdot 100 + (n-1) \cdot 150
+$$
+
+Example with $n=3$:
+
+$$
+3 \cdot 100 + 2 \cdot 150 = 600
+$$
+
+## Visual Style And Fidelity Direction
+
+The current direction is classic Windows-era readability with modern polish where it does not alter gameplay semantics. That means strong contrast, clear tile semantics, and sprite silhouettes that stay recognizable at movement speed.
+
+### Tile Semantics
+
+| Tile | Meaning | Design Priority |
+| --- | --- | --- |
+| Green block (`B`) | Pushable trap material | Highest gameplay readability |
+| Blue wall (`#`) | Static obstacle | Should shape flow but not over-constrain |
+| Cheese (`C`) | Reward pickup | Sparse in early levels to keep trap focus |
+| Cat spawn (`X`) | Threat source | Usually near outer regions |
 
 > [!TIP]
-> On iPad and phones, use the fixed virtual joystick in the **bottom-left corner**. The game detects touch automatically — no special mode needed.
+> If a level feels unfair, first reduce interior wall density, then verify there are multiple push lanes from center to at least one edge corridor.
 
----
+## Mobile And Web Experience
 
-## Quick Start
+The game supports desktop and touch interfaces through the same runtime logic.
 
-### Prerequisites
+- Left lane: large fixed virtual joystick.
+- Center: active board area.
+- Right lane: pause/help/sound and context actions.
 
-- Python 3.10 or newer
-- A display (or use Docker for headless testing)
+For web builds, the loader is patched in CI for cleaner copy and mobile-friendly behavior. Loading text is branded as Rodent's Revenge.
 
-### Install & Run
+## Annotated Visuals
+
+### Mobile layout zones
+
+![Annotated mobile layout](assets/docs/mobile-layout-annotated.svg)
+
+### Joystick release stability
+
+![Joystick release behavior](assets/docs/joystick-release-stability.svg)
+
+## Installation And Quick Start
+
+### Requirements
+
+- Python 3.10+
+- pip
+- SDL-compatible environment (desktop)
+
+### Local desktop run
 
 ```bash
-# Clone the repo
 git clone https://github.com/hkevin01/rodents-revenge.git
 cd rodents-revenge
-
-# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-# Install dependencies
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# Run the game
 PYTHONPATH=src python -m rodents_revenge.main
 ```
 
-> [!NOTE]
-> On **Windows**, omit `PYTHONPATH=src` and run from the repo root after installing:
-> ```bat
-> set PYTHONPATH=src
-> python -m rodents_revenge.main
-> ```
-
-### Build for Web / iPad
+### Web build run
 
 ```bash
+source .venv/bin/activate
 pip install -r requirements-web.txt
 python -m pygbag --build src/rodents_revenge
-# Output: build/web/  — open build/web/index.html in a browser
 ```
 
----
+> [!NOTE]
+> The build output is generated under the package build directory used by pygbag tooling.
 
 ## Controls
 
 ### Keyboard
 
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+| Input | Action |
+| --- | --- |
+| Arrow keys / WASD | Move mouse |
+| `P` | Pause toggle |
+| `H` | Help overlay toggle |
+| `M` | Sound toggle |
+| `Enter` | Start/confirm/menu actions |
+| `Esc` | Exit to menu (web-safe behavior) |
 
-| Key | Action |
-|---|---|
-| `Arrow Keys` / `WASD` | Move the mouse |
-| `P` | Pause / Resume |
-| `H` | Show / hide controls help |
-| `M` | Toggle sound on/off |
-| `R` | Restart *(game-over screen)* |
-| `Enter` | Confirm / start game / back to menu |
-| `Esc` | Quit *(goes to menu on web)* |
-| `←` / `→` on title screen | Change difficulty |
+### Touch
 
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
-
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
-
-### Touch / iPad
-
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
-
-| Gesture | Action |
-|---|---|
-| Drag bottom-left joystick | Move the mouse (4-way) |
-| Drag joystick thumb | Move the mouse (4-way) |
-| Tap **PAUSE** button | Pause / Resume |
-| Tap **HELP** button | Toggle controls overlay |
-| Tap **SND ON / SND OFF** button | Toggle sound |
-| Tap **⬅ MENU** / **↺ RESTART** | Game-over navigation |
-| Tap **DONE** on initials screen | Submit high score initials |
-
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
-
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
-
-### Mobile Optimization — Landscape Layout & Joystick Tuning
-
-The game is **fully optimized for mobile and tablet landscape play**. Here's what makes touch controls feel native:
-
-#### Screen Layout
-- **Left dark zone (420px):** Houses the large virtual joystick, keeping your thumb completely clear of the game board
-- **Center game board (800px):** Fully visible grid of walls, blocks, cheese, cats, and mouse
-- **Right dark zone (360px):** HUD buttons (PAUSE, HELP, SOUND, MENU/RESTART) positioned away from active play area
-- **Total width (1580px):** Scales responsively to fill landscape phones (e.g., iPhone 14 Pro landscape ≈ 844px) with perfect fit
-
-#### Virtual Joystick  
-**Fixed anchor, non-floating design** ensures your thumb doesn't drift during intense gameplay:
-- **Radius:** 190px (~1.8x the original) — fills the left lane, easy to target and control
-- **Thumb knob:** 68px diameter — large enough for confident drags, proportional to the ring
-- **Touch grab zone:** 380px radius — responsive even if your finger drifts slightly  
-- **Center position:** Horizontally centered in the left lane (210px from left edge) — maximum clearance from both the screen edge and the game board
-- **Auto-return:** Returns to default position when you release, ready for the next move
-
-#### Movement & Responsiveness
-- **Cardinal-only directions:** Left, right, up, down — **no diagonal moves**. Strong 3x axis-lock bias prevents jitter when dragging near 45° angles
-- **Debounced direction changes:** Direction switches mid-hold no longer fire immediate moves; instead, the joystick waits for stability before responding  
-- **Repeat timing:** 350ms initial delay before auto-repeat, then 300ms per step. Feels deliberate and gives you time to aim  
-- **Responsive grid stepping:** Each move fires once per repeat interval; no spam, no missed inputs
-
-#### Canvas Auto-Scaling
-- **Fills landscape viewport:** The game canvas automatically scales to fill your device width while maintaining aspect ratio
-- **Orientation-aware:** Detects orientation changes and re-centers the game on-the-fly
-- **Zero letterboxing:** Black bars only appear on very narrow devices; on typical modern phones, the game stretches edge-to-edge
-
-#### Visual Screenshots (Annotated)
-
-These are visual representations of the current mobile layout and joystick behavior, with labels to make touch zones and control flow explicit.
-
-**1) Mobile landscape layout with control zones and safe margins**
-
-![Annotated mobile landscape layout](assets/docs/mobile-layout-annotated.svg)
-
-What this shows:
-- The full width split: 420px left lane, 800px board, 360px right lane
-- Joystick center/radius placement and why it stays off-map
-- HUD button lane isolated from movement input area
-
-**2) Right-release bounce fix behavior (state flow visual)**
-
-![Joystick release stability diagram](assets/docs/joystick-release-stability.svg)
-
-What this shows:
-- The previous issue: brief opposite-direction signal when releasing from right
-- The new guard: opposite direction is ignored until neutral is crossed
-- Why this prevents accidental left movement after right input
-
----
-
-## How to Play
-
-```
-┌─────────────────────────────────────┐
-│  Walls (fixed)   Blocks (pushable)  │
-│  🐭 Mouse        🐱 Cat (orange)    │
-│  🧀 Cheese       Empty floor        │
-└─────────────────────────────────────┘
-```
-
-1. **Move** your mouse with arrow keys or the virtual joystick
-2. **Push blocks** — walk into a block to slide it one cell (only if the cell behind it is free)
-3. **Trap a cat** — surround it on all **8 sides** (including diagonals) with blocks, walls, or the board edge
-4. Trapped cats **turn into cheese** 🧀
-5. **Walk over cheese** to collect it for points
-6. **Clear the level** by trapping all cats
-
-> [!WARNING]
-> Cats move diagonally! A cat can slip past a gap you thought was closed. Each new level and every respawn starts with a **3-2-1-GO** countdown — cats don't move until GO.
-
----
-
-## Scoring
-
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
-
-| Event | Points |
-|---|---|
-| Each step taken | +1 |
-| Collect a cheese tile | +25 |
-| Trap a single cat | +100 |
-| Multi-trap bonus (per extra cat beyond the first) | +150 |
-
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
-
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
-
-**Multi-trap example:** Trap 3 cats at once → `3 × 100 + 2 × 150 = 600 pts`
-
-High scores are saved in your **browser (localStorage)** when playing on web, or in `scores.json` locally. Top 10 scores with 3-letter initials are shown on the title screen.
-
----
-
-## Room Themes
-
-The room changes every **10 levels**, cycling through 6 unique environments. Each theme reskins the floor, walls, and cardboard boxes.
-
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
-
-| Levels | Room | Floor Style | Palette |
-|---|---|---|---|
-| 1–10 | 🍳 Kitchen | Checkerboard tile | Cream & near-black ceramic |
-| 11–20 | 🍽️ Dining Room | Wood planks | Warm oak tones |
-| 21–30 | 🛋️ Living Room | Burgundy carpet | Deep reds & tans |
-| 31–40 | 🛏️ Bedroom | Lavender carpet | Soft lilac & purple |
-| 41–50 | 🚿 Bathroom | Checkerboard tile | Sky blue & seafoam |
-| 51–60 | 🏚️ Attic | Rough planks | Dusty grey-browns |
-| 61+ | 🔄 *Cycles back* | — | — |
-
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
-
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
-
----
-
-## Level Progression
-
-<details>
-<summary><strong>Click to expand level generation details</strong></summary>
-
-### Levels 1–10 — Hand-crafted Presets
-
-Ten carefully designed layouts with fixed wall structures, predefined cheese locations, and a set number of cats. Great for learning block-pushing patterns.
-
-### Levels 11–100 — Seeded Procedural
-
-Levels beyond 10 use a seeded generator (seed = level number) so the same level always looks the same on every play-through. Difficulty ramps up in **tiers of 10**:
-
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
-
-| Tier | Levels | Cats | Blocks |
-|---|---|---|---|
-| 0 | 11–20 | 3 | 38 |
-| 1 | 21–30 | 3 | 42 |
-| 2 | 31–40 | 4 | 46 |
-| 3 | 41–50 | 4 | 50 |
-| 4 | 51–60 | 5 | 54 |
-| 5 | 61–70 | 5 | 58 |
-| 6 | 71–80 | 6 | 62 |
-| 7 | 81–90 | 6 | 66 |
-| 8 | 91–100 | 7 | 70 |
-| 9 | 101–110 | 8 | 74 |
-
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
-
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
-
-### Levels 111+ — Fully Procedural
-
-Pure random generation: up to 12 cats and dense block placement. No two runs are the same.
-
-</details>
-
----
+| Gesture / Button | Action |
+| --- | --- |
+| Drag virtual joystick | Four-way movement |
+| PAUSE | Pause/resume |
+| HELP | Show/hide controls help |
+| SND ON/OFF | Audio toggle |
 
 ## Difficulty Modes
 
-Selected on the title screen before starting a game. Cat base speed is **2000 ms per step** at level 1.
+| Mode | Cat Delay Adjustment | Cat Count Adjustment |
+| --- | --- | --- |
+| Easy | Slower | -1 |
+| Normal | Baseline | 0 |
+| Hard | Faster | +1 |
 
-<!-- brass-brief:table-pre -->
-> **Leadership context for Rodents Revenge:** This table highlights capability, gaps, and expected impact to support faster prioritization decisions.
+Progressive acceleration still applies as level number increases.
 
-| Mode | Cat Speed | Cat Count |
-|---|---|---|
-| Easy | +250 ms slower (2250 ms base) | −1 cat per level |
-| Normal | baseline (2000 ms base) | baseline |
-| Hard | −125 ms faster (1875 ms base) | +1 cat per level |
+## Level Design Model
 
-<!-- brass-brief:table-post -->
-> **How this helps the core problem:** Use this view to choose what to pilot first, what to scale next, and what to monitor for measurable process improvement.
+The game currently mixes handcrafted and generated content:
 
- Use the table as a planning baseline for staffing, risk reduction, and process improvement. The practical goal is to move from reactive work to repeatable, measurable execution with clearer accountability.
+- Levels 1-10: handcrafted presets tuned for style and solvability.
+- Levels 11+: seeded procedural maps with increasing block density and cat pressure.
 
-### Cat Speed Acceleration
+### Preset design goals
 
-Cat speed increases each level regardless of difficulty:
+1. Mouse starts center-ish to keep opening decisions meaningful.
+2. Cat spawns bias toward outer areas.
+3. Interior has many pushable blocks and limited static walls.
+4. At least one viable path to begin trap setup without requiring luck.
 
-- **Levels 1–20:** −20 ms per level (e.g. level 10 → 1800 ms)
-- **Levels 21+:** an additional −50 ms per level on top of the base ramp
-- **Floor:** 150 ms minimum (no slower than ~6 steps/sec)
+### Progression table
 
----
+| Range | Source | Typical Feel |
+| --- | --- | --- |
+| 1-3 | Preset | Intro trap loops, forgiving movement lanes |
+| 4-6 | Preset | Higher pressure, tighter timing |
+| 7-10 | Preset | Dense tactical boards, faster threat convergence |
+| 11+ | Seeded | Systematic scaling by level tier |
+
+## Why Some Maps Felt Impossible
+
+When maps become too wall-heavy inside the main play region, the player loses the ability to reposition blocks and build traps under pressure. That causes apparent dead states that feel unfair even if a formal solution exists.
+
+To avoid this, current tuning emphasizes:
+
+- More green pushable blocks than blue walls in preset interiors.
+- Fewer hard partitions in center lanes.
+- Symmetric pressure where possible, but not at the cost of playability.
+
+> [!IMPORTANT]
+> Fidelity to the original look is important, but solvability and readable decision space come first. A nostalgic layout that repeatedly yields dead starts is not a good remake experience.
+
+## Architecture Overview
+
+```mermaid
+flowchart TD
+    A[Input: Keyboard/Touch] --> B[Game Loop]
+    B --> C[Player Move Resolution]
+    C --> D[Block Push / Trap Check]
+    D --> E[Cat AI Step]
+    E --> F[Collision + Score Update]
+    F --> G[Render Frame]
+    G --> B
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Title
+    Title --> Playing: Start
+    Playing --> Paused: Pause
+    Paused --> Playing: Resume
+    Playing --> LevelClearDelay: All cats trapped
+    LevelClearDelay --> Playing: Next level reset
+    Playing --> GameOver: No lives
+    GameOver --> Title: Menu
+```
 
 ## Project Structure
 
-```
-rodents-revenge/
-├── src/
-│   └── rodents_revenge/
-│       ├── game.py          # All game logic, rendering, AI, level gen
-│       ├── main.py          # Entry point — asyncio.run(run_game())
-│       ├── scores.py        # JSON / localStorage high-score persistence
-│       └── __init__.py
-├── tests/
-│   └── test_game_logic.py   # 40 pytest tests
-├── assets/
-│   ├── sprites/             # Optional sprite sheets (CC-BY)
-│   └── docs/ATTRIBUTION.md  # Asset credits
-├── docker/
-│   └── docker-compose.yml
-├── .github/
-│   └── workflows/
-│       └── pygbag.yml       # GitHub Pages / iPad deploy workflow
-├── requirements.txt         # pygame-ce, pytest
-└── requirements-web.txt     # pygbag (web/iPad build)
+| Path | Purpose |
+| --- | --- |
+| `src/rodents_revenge/game.py` | Main logic: state, rendering, AI, level generation |
+| `src/rodents_revenge/main.py` | Runtime entrypoint |
+| `src/rodents_revenge/scores.py` | Score persistence |
+| `tests/test_game_logic.py` | Gameplay and regression tests |
+| `.github/workflows/pygbag.yml` | Web build and deployment pipeline |
+| `assets/docs/` | Documentation visuals |
+
+## Testing
+
+Run the full gameplay suite:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_game_logic.py
 ```
 
----
+Static syntax check:
+
+```bash
+source .venv/bin/activate
+.venv/bin/python -m py_compile src/rodents_revenge/game.py
+```
 
 ## Docker
 
 ```bash
-# Run the test suite headlessly
 docker compose -f docker/docker-compose.yml run --rm test
-
-# Run the game (requires display forwarding on host)
-docker compose -f docker/docker-compose.yml run --rm game
 ```
 
-> [!NOTE]
-> The `test` service sets `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` so tests run in CI with no display.
+Use Docker when you need deterministic CI-like behavior without host SDL differences.
 
----
+## Web Deployment
 
-## Running Tests
+GitHub Actions builds and publishes the pygbag output to GitHub Pages.
 
-```bash
-# Activate venv first
-source .venv/bin/activate
+### Workflow summary
 
-PYTHONPATH=src python -m pytest -q
-```
+| Step | What happens |
+| --- | --- |
+| Checkout | Pull latest repo state |
+| Python setup | Install runtime + dependencies |
+| Web build | Compile pygame app via pygbag |
+| Loader patch | Apply branding/mobile usability adjustments |
+| Publish | Deploy to `gh-pages` |
 
-Expected output: **40 passed**
+## Troubleshooting
 
----
+<details>
+<summary><strong>Game window opens but controls do not respond</strong></summary>
+
+Confirm the window has focus and that your keyboard layout is not intercepting arrow keys. On web, tap once on the canvas before using keys.
+
+</details>
+
+<details>
+<summary><strong>Touch movement feels jittery</strong></summary>
+
+The joystick is axis-locked to cardinal movement. Keep thumb drags clearly horizontal or vertical instead of diagonal.
+
+</details>
+
+<details>
+<summary><strong>Web page still shows old loader text</strong></summary>
+
+Force-refresh the browser to invalidate cached assets after a new deployment.
+
+</details>
+
+## Roadmap
+
+- [ ] Continue preset level fidelity pass based on original screenshot patterns.
+- [ ] Add optional visual debug overlay for map solvability checks.
+- [ ] Improve sprite animation frames while preserving pixel-art readability.
+- [ ] Add optional accessibility palette variants.
 
 ## Contributing
 
-Contributions are welcome! Here are some ideas:
+Contributions are welcome. If you submit gameplay changes, include:
 
-- [ ] More hand-crafted levels (extend `LEVEL_PRESETS` in `game.py`)
-- [ ] Additional room themes
-- [ ] Mobile-optimised landscape layout
-- [ ] Online leaderboard via a lightweight backend
+1. A short explanation of expected behavior.
+2. Test updates when behavior intentionally changes.
+3. Screenshots or short clips for major visual updates.
 
-To contribute:
+## Credits And Attribution
 
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Make your changes and run `PYTHONPATH=src python -m pytest -q`
-4. Open a pull request
+- Inspired by Rodent's Revenge, originally created by Christopher Lee Fraley.
+- Additional asset attribution is documented in `assets/docs/ATTRIBUTION.md`.
 
 ---
 
-<div align="center">
-
-*Inspired by Rodent's Revenge (Microsoft, 1991) — unofficial fan remake using CC-BY licensed assets.*
-
-</div>
+If you are here for the classic puzzle feel, start at level 1, play on Normal, and focus on creating cat funnels before chasing cheese.

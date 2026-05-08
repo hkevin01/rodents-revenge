@@ -1715,58 +1715,51 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """8-bit side-view mouse. Drawn facing right on a temp surface, flipped for left."""
+        """8-bit side-view mouse with finer pixel density so it reads as a sprite, not a block."""
         cx, cy = center
-        ps = max(1, scale // 12)   # one logical "pixel"
-        GW, GH = 13, 9
-        tmp = pygame.Surface((GW * ps, GH * ps), pygame.SRCALPHA)
+        gw, gh = 18, 12
+        target_w = max(12, int(scale * 0.82))
+        ps = max(1, target_w // gw)
+        tmp = pygame.Surface((gw * ps, gh * ps), pygame.SRCALPHA)
 
-        B  = (200, 196, 192)   # body gray
-        BL = (226, 222, 218)   # top highlight
-        BS = (146, 142, 138)   # bottom shadow
-        ER = (184, 180, 176)   # ear
-        IN = (246, 174, 184)   # inner ear pink
-        TL = (158, 138, 144)   # tail
-        NS = (250, 148, 164)   # nose
-        EY = (14, 12, 18)      # eye
+        palette = {
+            "b": (199, 194, 188),  # body
+            "h": (228, 223, 216),  # highlight
+            "s": (144, 138, 132),  # shadow
+            "e": (186, 180, 176),  # ear
+            "i": (244, 172, 182),  # inner ear
+            "t": (166, 142, 148),  # tail
+            "n": (248, 150, 166),  # nose
+            "o": (20, 20, 22),     # eye
+        }
+        sprite = [
+            "..................",
+            "......ee..........",
+            ".....eiee.........",
+            "......ee..........",
+            "...bbbbhh.........",
+            "..bbbbbbbbhh......",
+            ".ttbbbbbbbbbhhon..",
+            "..bbbbbbbbbss.....",
+            "...bbbbbbss.......",
+            "....bbbb..........",
+            ".....bb...........",
+            "..................",
+        ]
 
-        def p(x: int, y: int, c: tuple, w: int = 1, h: int = 1) -> None:
-            pygame.draw.rect(tmp, c, (x * ps, y * ps, w * ps, h * ps))
+        for y, row in enumerate(sprite):
+            for x, ch in enumerate(row):
+                if ch != ".":
+                    pygame.draw.rect(tmp, palette[ch], (x * ps, y * ps, ps, ps))
 
-        # Ear - large round shape, rows 0-2, above the head-body junction (cols 5-9)
-        p(6, 0, ER, 2)
-        p(5, 1, ER, 4)
-        p(5, 2, ER); p(6, 2, IN, 2); p(8, 2, ER)
-
-        # Tail - diagonal stub, back-left
-        p(0, 3, TL, 2)
-        p(1, 4, TL, 2)
-        p(2, 5, TL)
-
-        # Body - rows 3-7, cols 2-6
-        p(2, 3, BL, 5)
-        p(2, 4, B,  5, 2)
-        p(2, 6, BS, 5)
-        p(3, 7, B,  3)          # lower taper
-
-        # Head - rows 3-6, cols 6-11 (front, right side)
-        p(6, 3, BL, 6)
-        p(6, 4, B,  6, 2)
-        p(6, 6, BS, 6)
-
-        # Eye and nose
-        p(9,  4, EY)
-        p(11, 5, NS)
-
-        # Whiskers
-        pygame.draw.line(tmp, (168, 158, 154),
-                         (11 * ps, 5 * ps + ps // 2), (7 * ps, 4 * ps), 1)
-        pygame.draw.line(tmp, (168, 158, 154),
-                         (11 * ps, 5 * ps + ps // 2), (7 * ps, 6 * ps), 1)
+        wx0 = int(16.2 * ps)
+        wy0 = int(6.4 * ps)
+        pygame.draw.line(tmp, (170, 160, 156), (wx0, wy0), (int(12.8 * ps), int(5.3 * ps)), 1)
+        pygame.draw.line(tmp, (170, 160, 156), (wx0, wy0), (int(12.9 * ps), int(7.3 * ps)), 1)
 
         if facing < 0:
             tmp = pygame.transform.flip(tmp, True, False)
-        surf.blit(tmp, (cx - GW * ps // 2, cy - GH * ps // 2))
+        surf.blit(tmp, (cx - tmp.get_width() // 2, cy - tmp.get_height() // 2))
 
     def _draw_classic_cat_icon(
         surf: pygame.Surface,
@@ -1774,69 +1767,50 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """8-bit side-view cat. Drawn facing right on a temp surface, flipped for left."""
+        """8-bit side-view cat with pointed ears and tabby striping at higher pixel resolution."""
         cx, cy = center
-        ps = max(1, scale // 12)
-        GW, GH = 13, 9
-        tmp = pygame.Surface((GW * ps, GH * ps), pygame.SRCALPHA)
+        gw, gh = 18, 12
+        target_w = max(12, int(scale * 0.86))
+        ps = max(1, target_w // gw)
+        tmp = pygame.Surface((gw * ps, gh * ps), pygame.SRCALPHA)
 
-        FU = (244, 192, 54)    # fur yellow-orange
-        FK = (150, 94, 16)     # dark fur / stripes
-        FL = (255, 222, 120)   # light highlight
-        PI = (255, 170, 162)   # inner ear pink
-        GN = (56, 148, 48)     # eye iris green
-        EY = (14, 12, 16)      # eye pupil
-        NS = (252, 158, 148)   # nose
-        WH = (240, 238, 210)   # whisker
+        palette = {
+            "f": (242, 188, 54),   # fur
+            "l": (255, 222, 122),  # fur light
+            "k": (150, 92, 16),    # stripe/shadow
+            "p": (255, 168, 160),  # inner ear / nose
+            "g": (84, 176, 68),    # iris
+            "o": (16, 14, 18),     # pupil
+            "t": (136, 84, 22),    # tail
+        }
+        sprite = [
+            ".......f..f.......",
+            "......fp..pf......",
+            "..ttt..llll.......",
+            ".ttt..fffffll......",
+            "..ffffkfffffll.....",
+            "..ffffkfffffggop...",
+            "..ffffkfffffkk.....",
+            "...fffffffkk.......",
+            "....fffffk.........",
+            ".....ffff..........",
+            "......ff...........",
+            "..................",
+        ]
 
-        def p(x: int, y: int, c: tuple, w: int = 1, h: int = 1) -> None:
-            pygame.draw.rect(tmp, c, (x * ps, y * ps, w * ps, h * ps))
+        for y, row in enumerate(sprite):
+            for x, ch in enumerate(row):
+                if ch != ".":
+                    pygame.draw.rect(tmp, palette[ch], (x * ps, y * ps, ps, ps))
 
-        # Two pointed ears above head (head = cols 6-11)
-        # Back ear: tip col 7 row 0, base cols 6-7 row 1
-        p(7, 0, FU)
-        p(6, 1, FU); p(7, 1, PI)
-        # Front ear: tip col 10 row 0, base cols 9-10 row 1
-        p(10, 0, FU)
-        p(9, 1, PI); p(10, 1, FU)
-
-        # Tail - thick, back-left
-        p(0, 2, FK, 3)
-        p(0, 3, FK, 2)
-        p(0, 4, FK, 2)
-        p(1, 5, FK)
-
-        # Body - rows 2-7, cols 3-7
-        p(3, 2, FL, 5)
-        p(3, 3, FU, 5, 3)
-        p(3, 6, FK, 5)
-        p(4, 7, FU, 3)          # lower taper
-
-        # Tabby stripes on body (vertical, mid rows only)
-        p(4, 3, FK, 1, 3)
-        p(6, 3, FK, 1, 3)
-
-        # Head - rows 2-7, cols 7-12
-        p(7, 2, FL, 5)
-        p(7, 3, FU, 5, 3)
-        p(7, 6, FK, 5)
-
-        # Eyes: green iris row 3, dark pupil row 4
-        p(9, 3, GN, 2)
-        p(9, 4, EY, 2)
-
-        # Nose
-        p(12, 4, NS)
-
-        # Whiskers
-        pygame.draw.line(tmp, WH,
-                         (12 * ps, 4 * ps + ps // 2), (8 * ps, 3 * ps), 1)
-        pygame.draw.line(tmp, WH,
-                         (12 * ps, 4 * ps + ps // 2), (8 * ps, 5 * ps + ps // 2), 1)
+        wx0 = int(16.0 * ps)
+        wy0 = int(5.4 * ps)
+        pygame.draw.line(tmp, (236, 232, 210), (wx0, wy0), (int(12.8 * ps), int(4.4 * ps)), 1)
+        pygame.draw.line(tmp, (236, 232, 210), (wx0, wy0), (int(12.9 * ps), int(6.4 * ps)), 1)
 
         if facing < 0:
             tmp = pygame.transform.flip(tmp, True, False)
-        surf.blit(tmp, (cx - GW * ps // 2, cy - GH * ps // 2))
+        surf.blit(tmp, (cx - tmp.get_width() // 2, cy - tmp.get_height() // 2))
 
     def _draw_touch_btn(
         surf: pygame.Surface,
