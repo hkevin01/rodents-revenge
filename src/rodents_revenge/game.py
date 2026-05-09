@@ -1715,9 +1715,9 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """Draw a side-view mouse from a low-res silhouette so it reads like a sprite, not a rectangle."""
+        """Draw a compact side-view mouse with an irregular silhouette instead of a boxy body."""
         cx, cy = center
-        logical = pygame.Surface((24, 16), pygame.SRCALPHA)
+        logical = pygame.Surface((26, 18), pygame.SRCALPHA)
 
         body = (198, 194, 188)
         light = (231, 226, 218)
@@ -1730,31 +1730,29 @@ async def run_game() -> None:
         whisker = (181, 172, 164)
         eye = (20, 20, 22)
 
-        pygame.draw.lines(logical, tail, False, [(1, 9), (3, 7), (5, 7), (7, 8)], 1)
-        pygame.draw.ellipse(logical, shadow, (5, 8, 10, 5))
-        pygame.draw.ellipse(logical, body, (6, 6, 11, 6))
-        pygame.draw.ellipse(logical, light, (8, 6, 7, 4))
-        pygame.draw.ellipse(logical, body, (14, 5, 6, 5))
-        pygame.draw.ellipse(logical, light, (15, 5, 4, 3))
-        pygame.draw.ellipse(logical, ear, (13, 3, 3, 3))
-        pygame.draw.ellipse(logical, ear, (15, 2, 3, 3))
-        logical.set_at((14, 4), inner_ear)
-        logical.set_at((16, 3), inner_ear)
+        pygame.draw.line(logical, tail, False, [(2, 10), (1, 8), (3, 7), (6, 8)], 1)
+        pygame.draw.ellipse(logical, shadow, (6, 8, 10, 6))
+        pygame.draw.ellipse(logical, body, (7, 7, 10, 5))
+        pygame.draw.ellipse(logical, light, (9, 7, 6, 3))
+        pygame.draw.circle(logical, body, (18, 7), 3)
+        pygame.draw.circle(logical, ear, (16, 4), 2)
+        pygame.draw.circle(logical, ear, (18, 3), 2)
+        logical.set_at((16, 4), inner_ear)
+        logical.set_at((18, 3), inner_ear)
         pygame.draw.line(logical, outline, (7, 12), (8, 14), 1)
         pygame.draw.line(logical, outline, (12, 12), (13, 14), 1)
-        pygame.draw.line(logical, outline, (8, 5), (14, 5), 1)
-        pygame.draw.line(logical, outline, (6, 8), (6, 11), 1)
-        pygame.draw.line(logical, outline, (16, 6), (18, 6), 1)
-        pygame.draw.line(logical, outline, (17, 7), (19, 7), 1)
-        logical.set_at((16, 6), eye)
-        logical.set_at((19, 7), nose)
-        pygame.draw.line(logical, whisker, (18, 7), (22, 6), 1)
-        pygame.draw.line(logical, whisker, (18, 8), (22, 8), 1)
+        pygame.draw.line(logical, outline, (8, 6), (15, 6), 1)
+        pygame.draw.line(logical, outline, (7, 8), (7, 11), 1)
+        pygame.draw.line(logical, outline, (18, 4), (18, 10), 1)
+        logical.set_at((19, 7), eye)
+        logical.set_at((21, 8), nose)
+        pygame.draw.line(logical, whisker, (20, 8), (24, 7), 1)
+        pygame.draw.line(logical, whisker, (20, 9), (24, 9), 1)
 
         if facing < 0:
             logical = pygame.transform.flip(logical, True, False)
 
-        target_w = max(12, int(scale * 0.84))
+        target_w = max(12, int(scale * 0.82))
         target_h = max(8, int(target_w * logical.get_height() / logical.get_width()))
         sprite = pygame.transform.scale(logical, (target_w, target_h))
         surf.blit(sprite, (cx - sprite.get_width() // 2, cy - sprite.get_height() // 2))
@@ -1765,9 +1763,9 @@ async def run_game() -> None:
         facing: int = 1,
         scale: int = TILE_SIZE,
     ) -> None:
-        """Draw a side-view cat with a tapered silhouette and visible legs, ears, and tail."""
+        """Draw a compact side-view cat with a tapered silhouette and pronounced head shape."""
         cx, cy = center
-        logical = pygame.Surface((24, 16), pygame.SRCALPHA)
+        logical = pygame.Surface((26, 18), pygame.SRCALPHA)
 
         fur = (241, 186, 58)
         light = (255, 224, 132)
@@ -1778,33 +1776,33 @@ async def run_game() -> None:
         nose = (255, 171, 157)
         whisker = (240, 233, 211)
 
-        pygame.draw.lines(logical, shadow, False, [(1, 8), (3, 6), (5, 6), (6, 8)], 2)
-        pygame.draw.ellipse(logical, fur, (6, 6, 11, 6))
-        pygame.draw.ellipse(logical, light, (10, 6, 6, 4))
-        pygame.draw.ellipse(logical, fur, (15, 4, 6, 6))
-        pygame.draw.polygon(logical, fur, [(15, 5), (17, 2), (18, 5)])
-        pygame.draw.polygon(logical, fur, [(18, 5), (20, 2), (21, 5)])
-        pygame.draw.polygon(logical, inner_ear, [(17, 4), (17, 3), (18, 4)])
-        pygame.draw.polygon(logical, inner_ear, [(19, 4), (20, 3), (20, 4)])
-        pygame.draw.line(logical, outline, (8, 12), (8, 15), 1)
-        pygame.draw.line(logical, outline, (12, 12), (12, 15), 1)
-        pygame.draw.line(logical, outline, (15, 12), (15, 15), 1)
-        pygame.draw.line(logical, shadow, (9, 7), (9, 11), 1)
-        pygame.draw.line(logical, shadow, (12, 7), (12, 11), 1)
-        pygame.draw.line(logical, shadow, (14, 7), (14, 10), 1)
-        pygame.draw.line(logical, outline, (7, 6), (16, 6), 1)
-        pygame.draw.line(logical, outline, (6, 8), (6, 11), 1)
-        pygame.draw.line(logical, outline, (16, 5), (20, 5), 1)
-        logical.set_at((18, 7), iris)
-        logical.set_at((19, 7), outline)
-        logical.set_at((21, 8), nose)
-        pygame.draw.line(logical, whisker, (20, 8), (23, 7), 1)
-        pygame.draw.line(logical, whisker, (20, 9), (23, 9), 1)
+        pygame.draw.line(logical, shadow, False, [(2, 9), (1, 7), (3, 6), (6, 7)], 2)
+        pygame.draw.ellipse(logical, shadow, (6, 8, 10, 6))
+        pygame.draw.ellipse(logical, fur, (7, 7, 10, 5))
+        pygame.draw.ellipse(logical, light, (9, 7, 6, 3))
+        pygame.draw.circle(logical, fur, (18, 7), 4)
+        pygame.draw.polygon(logical, fur, [(16, 4), (17, 1), (19, 4)])
+        pygame.draw.polygon(logical, fur, [(19, 4), (21, 1), (22, 4)])
+        pygame.draw.polygon(logical, inner_ear, [(17, 3), (18, 2), (18, 4)])
+        pygame.draw.polygon(logical, inner_ear, [(20, 3), (21, 2), (21, 4)])
+        pygame.draw.line(logical, outline, (7, 13), (7, 16), 1)
+        pygame.draw.line(logical, outline, (12, 13), (12, 16), 1)
+        pygame.draw.line(logical, outline, (16, 13), (16, 16), 1)
+        pygame.draw.line(logical, shadow, (9, 8), (9, 11), 1)
+        pygame.draw.line(logical, shadow, (12, 8), (12, 11), 1)
+        pygame.draw.line(logical, shadow, (14, 8), (14, 11), 1)
+        pygame.draw.line(logical, outline, (6, 7), (17, 7), 1)
+        pygame.draw.line(logical, outline, (6, 9), (6, 12), 1)
+        logical.set_at((19, 7), iris)
+        logical.set_at((20, 7), outline)
+        logical.set_at((22, 8), nose)
+        pygame.draw.line(logical, whisker, (21, 8), (24, 7), 1)
+        pygame.draw.line(logical, whisker, (21, 9), (24, 9), 1)
 
         if facing < 0:
             logical = pygame.transform.flip(logical, True, False)
 
-        target_w = max(12, int(scale * 0.88))
+        target_w = max(12, int(scale * 0.86))
         target_h = max(8, int(target_w * logical.get_height() / logical.get_width()))
         sprite = pygame.transform.scale(logical, (target_w, target_h))
         surf.blit(sprite, (cx - sprite.get_width() // 2, cy - sprite.get_height() // 2))
