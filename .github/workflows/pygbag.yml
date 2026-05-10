@@ -323,6 +323,31 @@ jobs:
           if "window.__rrResizeBound" not in html:
               html = html.replace("</body>", f"\n{resize_script}\n</body>", 1)
 
+          # Suppress known harmless upstream runtime logs to keep console actionable.
+          console_filter_script = """
+          <script>
+          (() => {
+            if (window.__rrConsoleFilterBound) return;
+            window.__rrConsoleFilterBound = true;
+            const blocked = [
+              "PyMain: BrowserFS not found",
+              "** MEDIA USER ACTION REQUIRED",
+            ];
+            const wrap = (fn) => function(...args) {
+              try {
+                const text = args.map((a) => (typeof a === "string" ? a : "")).join(" ");
+                if (blocked.some((b) => text.includes(b))) return;
+              } catch (_) {}
+              return fn.apply(this, args);
+            };
+            if (typeof console.log === "function") console.log = wrap(console.log);
+            if (typeof console.warn === "function") console.warn = wrap(console.warn);
+          })();
+          </script>
+          """
+          if "window.__rrConsoleFilterBound" not in html:
+              html = html.replace("</body>", f"\n{console_filter_script}\n</body>", 1)
+
           short_sha = os.environ.get("SHORT_SHA", "?")
           print(f"Sanitized index.html for build {short_sha}")
           index_path.write_text(html, encoding="utf-8")

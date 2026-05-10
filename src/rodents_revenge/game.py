@@ -467,10 +467,11 @@ class GameState:
         self.near_clear_warned = False
 
         self._place_random_cells(WALL, wall_count)
-        self._place_random_cells(BLOCK, block_count)
+        self._place_random_cells(BLOCK, block_count, avoid_adjacent_block=True)
         self._place_random_cells(CHEESE, min(1 + level // 20, 4))
 
         self.mouse_pos = self._find_centerish_free_cell()
+        self._ensure_mouse_can_reach_outer_ring()
         self.cats = self._find_outer_cat_spawns(cat_count, self.mouse_pos)
 
     def _apply_preset_level(self, level: int) -> bool:
@@ -509,9 +510,10 @@ class GameState:
         if mouse_spawn is not None:
             forbidden.add(mouse_spawn)
         extra_blocks = min(22 + level * 4, 64)
-        self._place_random_cells(BLOCK, extra_blocks, forbidden=forbidden)
+        self._place_random_cells(BLOCK, extra_blocks, forbidden=forbidden, avoid_adjacent_block=True)
 
         self.mouse_pos = self._find_centerish_free_cell(preferred=mouse_spawn)
+        self._ensure_mouse_can_reach_outer_ring()
 
         base_cat_count = max(1, len(cat_spawns))
         target_cat_count = max(1, base_cat_count + self.cat_count_offset)
@@ -868,6 +870,7 @@ class GameState:
         kind: int,
         count: int,
         forbidden: set[tuple[int, int]] | None = None,
+        avoid_adjacent_block: bool = False,
     ) -> None:
         placed = 0
         attempts = 0
@@ -879,6 +882,13 @@ class GameState:
             y = random.randint(1, self.height - 2)
             if (x, y) in forbidden:
                 continue
+            if avoid_adjacent_block and kind == BLOCK:
+                has_adj_block = any(
+                    self.in_bounds(x + dx, y + dy) and self.board[y + dy][x + dx] == BLOCK
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                )
+                if has_adj_block:
+                    continue
             if self.board[y][x] == EMPTY:
                 self.board[y][x] = kind
                 placed += 1
@@ -1086,13 +1096,7 @@ class GameState:
         preferred: tuple[int, int] | None = None,
         free_cells: list[tuple[int, int]] | None = None,
     ) -> tuple[int, int]:
-        """Pick a center-near free cell, but avoid enclosed components.
-
-        Spawn preference order:
-        1) Components that connect to the interior outer ring (x/y == 1 or max-1).
-        2) Larger passable components (EMPTY + CHEESE) to reduce boxed-in starts.
-        3) Center-near placement (and preferred cell if still valid in selected component).
-        """
+        """Pick a free cell nearest the board center for a classic mouse spawn."""
         cells = free_cells if free_cells is not None else [
             (x, y)
             for y in range(1, self.height - 1)
@@ -1101,73 +1105,6 @@ class GameState:
         ]
         if not cells:
             return self._find_free_cell()
-
-        passable = {
-            (x, y)
-            for y in range(1, self.height - 1)
-            for x in range(1, self.width - 1)
-            if self.board[y][x] in (EMPTY, CHEESE)
-        }
-        if not passable:
-            passable = set(cells)
-
-        # Build orthogonally connected components of passable cells.
-        comps: list[set[tuple[int, int]]] = []
-        seen: set[tuple[int, int]] = set()
-        for cell in passable:
-            if cell in seen:
-                continue
-            stack = [cell]
-            comp: set[tuple[int, int]] = {cell}
-            seen.add(cell)
-            while stack:
-                cx, cy = stack.pop()
-                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nx, ny = cx + dx, cy + dy
-                    nb = (nx, ny)
-                    if nb in passable and nb not in seen:
-                        seen.add(nb)
-                        comp.add(nb)
-                        stack.append(nb)
-            comps.append(comp)
-
-        cell_set = set(cells)
-
-        def touches_outer_ring(comp: set[tuple[int, int]]) -> bool:
-            return any(
-                x == 1 or y == 1 or x == self.width - 2 or y == self.height - 2
-                for x, y in comp
-            )
-
-        eligible = [comp for comp in comps if any(cell in cell_set for cell in comp)]
-        if eligible:
-            center_x = (self.width - 1) / 2
-            center_y = (self.height - 1) / 2
-            has_large_component = any(len(comp) >= 12 for comp in eligible)
-
-            def comp_center_dist(comp: set[tuple[int, int]]) -> float:
-                comp_cells = [cell for cell in comp if cell in cell_set]
-                if not comp_cells:
-                    return float("inf")
-                return min(abs(x - center_x) + abs(y - center_y) for x, y in comp_cells)
-
-            # Prefer outer-connected components when they are still near center.
-            # This avoids boxed-in starts while preserving classic center-ish spawn.
-            def comp_rank(comp: set[tuple[int, int]]) -> tuple[int, float, int, int]:
-                cd = comp_center_dist(comp)
-                outer = touches_outer_ring(comp)
-                return (
-                    1 if has_large_component and len(comp) < 12 else 0,
-                    0 if outer and cd <= 6 else 1,
-                    cd,
-                    -len(comp),
-                    0 if outer else 1,
-                )
-
-            best_comp = min(eligible, key=comp_rank)
-            cells = [cell for cell in cells if cell in best_comp]
-            if not cells:
-                return self._find_free_cell()
 
         cx = (self.width - 1) / 2
         cy = (self.height - 1) / 2
@@ -1181,6 +1118,122 @@ class GameState:
                 abs(cell[1] - cy),
             ),
         )
+
+    def _ensure_mouse_can_reach_outer_ring(self) -> None:
+        """Carve escape space if the mouse starts in an enclosed pocket."""
+        from collections import deque
+
+        def is_passable(x: int, y: int) -> bool:
+            return self.board[y][x] in (EMPTY, CHEESE)
+
+        def touches_outer(cells: set[tuple[int, int]]) -> bool:
+            return any(
+                x == 1 or y == 1 or x == self.width - 2 or y == self.height - 2
+                for x, y in cells
+            )
+
+        start = self.mouse_pos
+        if not self.in_bounds(*start):
+            return
+
+        # First, check whether we are already in a component that can reach the outer ring.
+        seen: set[tuple[int, int]] = {start}
+        queue: deque[tuple[int, int]] = deque([start])
+        while queue:
+            cx, cy = queue.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                nb = (nx, ny)
+                if nb in seen or not self.in_bounds(nx, ny):
+                    continue
+                if not is_passable(nx, ny):
+                    continue
+                seen.add(nb)
+                queue.append(nb)
+
+        if touches_outer(seen) and len(seen) >= 12:
+            return
+
+        # Dijkstra over grid with carve costs: EMPTY/CHEESE=0, BLOCK=1, WALL=3.
+        INF = 10**9
+        dist: dict[tuple[int, int], int] = {start: 0}
+        prev: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+        heap: list[tuple[int, tuple[int, int]]] = [(0, start)]
+        target: tuple[int, int] | None = None
+
+        while heap:
+            cur_cost, (cx, cy) = heapq.heappop(heap)
+            if cur_cost != dist.get((cx, cy), INF):
+                continue
+            if cx == 1 or cy == 1 or cx == self.width - 2 or cy == self.height - 2:
+                target = (cx, cy)
+                break
+
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                if not self.in_bounds(nx, ny):
+                    continue
+                tile = self.board[ny][nx]
+                step = 0 if tile in (EMPTY, CHEESE) else (1 if tile == BLOCK else 3)
+                nd = cur_cost + step
+                if nd < dist.get((nx, ny), INF):
+                    dist[(nx, ny)] = nd
+                    prev[(nx, ny)] = (cx, cy)
+                    heapq.heappush(heap, (nd, (nx, ny)))
+
+        if target is None:
+            return
+
+        # Carve the minimal-cost path to connect the mouse region to outer space.
+        cursor: tuple[int, int] | None = target
+        while cursor is not None:
+            x, y = cursor
+            if (x, y) != start and self.board[y][x] in (BLOCK, WALL):
+                self.board[y][x] = EMPTY
+            cursor = prev.get(cursor)
+
+        # Ensure the spawn region is not tiny; carve nearest blockers outward
+        # until we expose at least a modest maneuver space.
+        def current_reachable() -> set[tuple[int, int]]:
+            vis: set[tuple[int, int]] = {start}
+            q2: deque[tuple[int, int]] = deque([start])
+            while q2:
+                cx2, cy2 = q2.popleft()
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx2, ny2 = cx2 + dx, cy2 + dy
+                    nb2 = (nx2, ny2)
+                    if nb2 in vis or not self.in_bounds(nx2, ny2):
+                        continue
+                    if self.board[ny2][nx2] not in (EMPTY, CHEESE):
+                        continue
+                    vis.add(nb2)
+                    q2.append(nb2)
+            return vis
+
+        target_open_area = 12
+        for _ in range(40):
+            vis = current_reachable()
+            if len(vis) >= target_open_area:
+                break
+            frontier_blocks: list[tuple[int, int, int]] = []
+            for vx, vy in vis:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    bx, by = vx + dx, vy + dy
+                    if not self.in_bounds(bx, by):
+                        continue
+                    if self.board[by][bx] not in (BLOCK, WALL):
+                        continue
+                    # Prefer blocks, then nearest to mouse center.
+                    carve_cost = 0 if self.board[by][bx] == BLOCK else 2
+                    dist_center = abs(bx - start[0]) + abs(by - start[1])
+                    frontier_blocks.append((carve_cost, dist_center, bx * 100 + by))
+            if not frontier_blocks:
+                break
+            frontier_blocks.sort()
+            _, _, packed = frontier_blocks[0]
+            bx = packed // 100
+            by = packed % 100
+            self.board[by][bx] = EMPTY
 
     def _find_outer_cat_spawns(
         self,
