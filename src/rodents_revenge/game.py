@@ -2154,10 +2154,7 @@ async def run_game() -> None:
             screen.blit(_db_surf, (_db_rect.centerx - _db_surf.get_width() // 2,
                                    _db_rect.centery - _db_surf.get_height() // 2))
 
-        if state.respawn_flash > 0 and (state.respawn_flash // 6) % 2 == 0:
-            flash = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            flash.fill((255, 255, 200, 35))
-            screen.blit(flash, (0, 0))
+        # Respawn flash effect intentionally disabled.
 
         if state.game_over:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
