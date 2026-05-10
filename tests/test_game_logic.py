@@ -1,3 +1,5 @@
+import random
+
 from rodents_revenge.game import (
     BLOCK, CHEESE, EMPTY, GameState, WALL,
     TRAP_SCORE, CHEESE_SCORE, MULTI_TRAP_BONUS,
@@ -617,6 +619,40 @@ def test_procedural_levels_have_higher_block_density() -> None:
     assert low_blocks >= 50
     # Higher level should have at least as many blocks
     assert high_blocks >= low_blocks
+
+
+def _reachable_passable_cells(state: GameState, start: tuple[int, int]) -> set[tuple[int, int]]:
+    from collections import deque
+
+    q: deque[tuple[int, int]] = deque([start])
+    seen: set[tuple[int, int]] = {start}
+    while q:
+        x, y = q.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in seen or not state.in_bounds(nx, ny):
+                continue
+            if state.board[ny][nx] not in (EMPTY, CHEESE):
+                continue
+            seen.add((nx, ny))
+            q.append((nx, ny))
+    return seen
+
+
+def test_level5_mouse_spawn_not_boxed_in_across_seeds() -> None:
+    # Regression: level 5 could spawn in an enclosed pocket where movement
+    # remained trapped inside central boxed regions.
+    for seed in range(40):
+        random.seed(seed)
+        state = GameState(width=GRID_WIDTH, height=len(LEVEL_PRESETS[1]) + 2)
+        state.reset_level(5)
+
+        reach = _reachable_passable_cells(state, state.mouse_pos)
+        assert len(reach) >= 12
+        assert any(
+            x == 1 or y == 1 or x == state.width - 2 or y == state.height - 2
+            for x, y in reach
+        )
 
 
 # ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------

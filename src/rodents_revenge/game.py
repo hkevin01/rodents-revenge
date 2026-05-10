@@ -1086,7 +1086,13 @@ class GameState:
         preferred: tuple[int, int] | None = None,
         free_cells: list[tuple[int, int]] | None = None,
     ) -> tuple[int, int]:
-        """Pick a free cell nearest the board center for a classic mouse spawn."""
+        """Pick a center-near free cell, but avoid enclosed components.
+
+        Spawn preference order:
+        1) Components that connect to the interior outer ring (x/y == 1 or max-1).
+        2) Larger passable components (EMPTY + CHEESE) to reduce boxed-in starts.
+        3) Center-near placement (and preferred cell if still valid in selected component).
+        """
         cells = free_cells if free_cells is not None else [
             (x, y)
             for y in range(1, self.height - 1)
@@ -1095,6 +1101,73 @@ class GameState:
         ]
         if not cells:
             return self._find_free_cell()
+
+        passable = {
+            (x, y)
+            for y in range(1, self.height - 1)
+            for x in range(1, self.width - 1)
+            if self.board[y][x] in (EMPTY, CHEESE)
+        }
+        if not passable:
+            passable = set(cells)
+
+        # Build orthogonally connected components of passable cells.
+        comps: list[set[tuple[int, int]]] = []
+        seen: set[tuple[int, int]] = set()
+        for cell in passable:
+            if cell in seen:
+                continue
+            stack = [cell]
+            comp: set[tuple[int, int]] = {cell}
+            seen.add(cell)
+            while stack:
+                cx, cy = stack.pop()
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = cx + dx, cy + dy
+                    nb = (nx, ny)
+                    if nb in passable and nb not in seen:
+                        seen.add(nb)
+                        comp.add(nb)
+                        stack.append(nb)
+            comps.append(comp)
+
+        cell_set = set(cells)
+
+        def touches_outer_ring(comp: set[tuple[int, int]]) -> bool:
+            return any(
+                x == 1 or y == 1 or x == self.width - 2 or y == self.height - 2
+                for x, y in comp
+            )
+
+        eligible = [comp for comp in comps if any(cell in cell_set for cell in comp)]
+        if eligible:
+            center_x = (self.width - 1) / 2
+            center_y = (self.height - 1) / 2
+            has_large_component = any(len(comp) >= 12 for comp in eligible)
+
+            def comp_center_dist(comp: set[tuple[int, int]]) -> float:
+                comp_cells = [cell for cell in comp if cell in cell_set]
+                if not comp_cells:
+                    return float("inf")
+                return min(abs(x - center_x) + abs(y - center_y) for x, y in comp_cells)
+
+            # Prefer outer-connected components when they are still near center.
+            # This avoids boxed-in starts while preserving classic center-ish spawn.
+            def comp_rank(comp: set[tuple[int, int]]) -> tuple[int, float, int, int]:
+                cd = comp_center_dist(comp)
+                outer = touches_outer_ring(comp)
+                return (
+                    1 if has_large_component and len(comp) < 12 else 0,
+                    0 if outer and cd <= 6 else 1,
+                    cd,
+                    -len(comp),
+                    0 if outer else 1,
+                )
+
+            best_comp = min(eligible, key=comp_rank)
+            cells = [cell for cell in cells if cell in best_comp]
+            if not cells:
+                return self._find_free_cell()
 
         cx = (self.width - 1) / 2
         cy = (self.height - 1) / 2
