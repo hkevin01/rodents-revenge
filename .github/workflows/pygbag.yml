@@ -262,7 +262,7 @@ jobs:
             overflow: hidden !important;
           }
           """
-            if "Rodent's Revenge loader polish" not in html:
+          if "Rodent Revenge loader polish" not in html:
               html = html.replace("</style>", f"\n{polished_loader_css}\n</style>", 1)
 
           # Add a resilient mobile unlock hook that does not rely on a specific
