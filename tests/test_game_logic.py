@@ -655,6 +655,41 @@ def test_level5_mouse_spawn_not_boxed_in_across_seeds() -> None:
         )
 
 
+def test_no_adjacent_blue_blocks_on_any_map() -> None:
+    """
+    Verify constraint: no two blue blocks are orthogonally adjacent on any map.
+    Tests preset levels (1-10), seeded levels (11-30), and procedural fallback.
+    """
+    def has_adjacent_blocks(state: GameState) -> bool:
+        """Check if any BLOCK has an orthogonal BLOCK neighbor."""
+        for y in range(1, state.height - 1):
+            for x in range(1, state.width - 1):
+                if state.board[y][x] == BLOCK:
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = x + dx, y + dy
+                        if state.in_bounds(nx, ny) and state.board[ny][nx] == BLOCK:
+                            return True
+        return False
+
+    # Test preset levels (1-10)
+    for level in range(1, 11):
+        state = GameState(width=20, height=15)
+        state.reset_level(level)
+        assert not has_adjacent_blocks(state), f"Level {level} has adjacent blocks"
+
+    # Test seeded levels (11-30) across multiple seeds
+    for level in range(11, 31):
+        state = GameState(width=20, height=15)
+        state.reset_level(level)
+        assert not has_adjacent_blocks(state), f"Level {level} has adjacent blocks"
+
+    # Test procedural levels (high level numbers)
+    for level in [35, 50, 100]:
+        state = GameState(width=20, height=15)
+        state.reset_level(level)
+        assert not has_adjacent_blocks(state), f"Level {level} (procedural) has adjacent blocks"
+
+
 # ---------- roadmap batch: help overlay / near-clear / cheese scatter ----------
 
 def test_cheese_scatter_on_level_start() -> None:

@@ -472,6 +472,7 @@ class GameState:
 
         self.mouse_pos = self._find_centerish_free_cell()
         self._ensure_mouse_can_reach_outer_ring()
+        self._enforce_no_adjacent_blocks()
         self.cats = self._find_outer_cat_spawns(cat_count, self.mouse_pos)
 
     def _apply_preset_level(self, level: int) -> bool:
@@ -514,6 +515,7 @@ class GameState:
 
         self.mouse_pos = self._find_centerish_free_cell(preferred=mouse_spawn)
         self._ensure_mouse_can_reach_outer_ring()
+        self._enforce_no_adjacent_blocks()
 
         base_cat_count = max(1, len(cat_spawns))
         target_cat_count = max(1, base_cat_count + self.cat_count_offset)
@@ -893,6 +895,25 @@ class GameState:
                 self.board[y][x] = kind
                 placed += 1
 
+    def _enforce_no_adjacent_blocks(self) -> None:
+        """
+        Post-process board to ensure no two blue blocks are orthogonally adjacent.
+        Iterates until all adjacencies are resolved by converting one of each
+        adjacent pair to EMPTY. Applied after all level setup to enforce constraint
+        across all generation paths (preset, seeded, procedural).
+        """
+        changed = True
+        while changed:
+            changed = False
+            for y in range(1, self.height - 1):
+                for x in range(1, self.width - 1):
+                    if self.board[y][x] == BLOCK:
+                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                            nx, ny = x + dx, y + dy
+                            if self.in_bounds(nx, ny) and self.board[ny][nx] == BLOCK:
+                                self.board[ny][nx] = EMPTY
+                                changed = True
+
     def _find_safe_respawn(
         self,
         min_cat_dist: int,
@@ -1047,7 +1068,7 @@ class GameState:
                     if 1 <= cx < self.width - 1 and 1 <= cy < self.height - 1:
                         self.board[cy][cx] = WALL
 
-            # Collect free interior cells
+            # Collect free interior cells (temp storage for random placement)
             free = [
                 (x, y)
                 for y in range(2, self.height - 2)
@@ -1069,12 +1090,27 @@ class GameState:
 
             forbidden = {mouse} | set(self.cats)
 
-            # Blocks
+            # Blocks - place with adjacency constraint to avoid deduplication loss
             block_pool = [c for c in free if c not in forbidden]
             rng.shuffle(block_pool)
-            for bx, by in block_pool[:block_cnt]:
+            blocks_placed = 0
+            used_for_blocks = set()
+            for bx, by in block_pool:
+                if blocks_placed >= block_cnt:
+                    break
+                # Check if this block would be adjacent to an existing block
+                has_adj_block = any(
+                    self.in_bounds(bx + dx, by + dy) and self.board[by + dy][bx + dx] == BLOCK
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                )
+                if has_adj_block:
+                    continue
                 self.board[by][bx] = BLOCK
-            remaining = block_pool[block_cnt:]
+                blocks_placed += 1
+                used_for_blocks.add((bx, by))
+            
+            # Remaining cells available for cheese
+            remaining = [c for c in block_pool if c not in used_for_blocks and self.board[c[1]][c[0]] == EMPTY]
 
             # Cheese
             for cx2, cy2 in remaining[:cheese_cnt]:
