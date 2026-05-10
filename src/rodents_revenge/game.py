@@ -6,6 +6,7 @@ import heapq
 import math
 import random
 import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,6 +19,14 @@ if not hasattr(pygame, "init"):
         import pygame_ce as pygame  # type: ignore[no-redef]
     except Exception:
         pass
+
+# pygbag/emscripten does not ship a local fc-list cache file; this warning is
+# expected and does not impact bundled font rendering in this game.
+warnings.filterwarnings(
+    "ignore",
+    message=r"no font cache \(fc-list format\) file found",
+    category=UserWarning,
+)
 
 
 GRID_WIDTH = 20
@@ -1478,11 +1487,19 @@ def _make_icon() -> pygame.Surface:
 
 
 async def run_game() -> None:
-    try:
-        pygame.mixer.pre_init(22050, -16, 1, 512)
-    except Exception:
-        pass
+    is_web = sys.platform == "emscripten"
+    if not is_web:
+        try:
+            pygame.mixer.pre_init(22050, -16, 1, 512)
+        except Exception:
+            pass
     pygame.init()
+    if is_web:
+        # Avoid browser autoplay and ScriptProcessor warnings from mixer startup.
+        try:
+            pygame.mixer.quit()
+        except Exception:
+            pass
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption(GAME_TITLE)
     # Keep pixel-art look on high-DPI screens (iPad, Retina, etc.)
@@ -1506,23 +1523,32 @@ async def run_game() -> None:
             pass
     pygame.display.set_icon(_make_icon())
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont("arial", 24, bold=True)
-    small_font = pygame.font.SysFont("arial", 20)
-    tiny_font = pygame.font.SysFont("arial", 14)
+    def _mk_font(size: int, bold: bool = False) -> pygame.font.Font:
+        # SysFont triggers fc-list cache warnings in wasm; use bundled default there.
+        if is_web:
+            f = pygame.font.Font(None, size)
+            f.set_bold(bold)
+            return f
+        return pygame.font.SysFont("arial", size, bold=bold)
+
+    font = _mk_font(24, bold=True)
+    small_font = _mk_font(20)
+    tiny_font = _mk_font(14)
     sprites = _load_sprite_pack(TILE_SIZE)
-    title_font = pygame.font.SysFont("arial", 36, bold=True)
-    big_title_font = pygame.font.SysFont("arial", 56, bold=True)
+    title_font = _mk_font(36, bold=True)
+    big_title_font = _mk_font(56, bold=True)
     snd: dict[str, pygame.mixer.Sound | None] = {}
-    try:
-        snd["move"]  = _gen_tone(880,  0.04, vol=0.12)
-        snd["trap"]  = _gen_tone(523,  0.12, vol=0.30)
-        snd["combo"] = _gen_tone(659,  0.18, vol=0.35)
-        snd["death"] = _gen_sweep(440, 110, 0.35, vol=0.30)
-        snd["clear"] = _gen_sweep(392, 784, 0.40, vol=0.30)
-        snd["cheese"]= _gen_tone(1046, 0.07, vol=0.20)
-        snd["warn"]  = _gen_sweep(300,  900, 0.15, vol=0.28)
-    except Exception:
-        snd = {}
+    if not is_web:
+        try:
+            snd["move"] = _gen_tone(880, 0.04, vol=0.12)
+            snd["trap"] = _gen_tone(523, 0.12, vol=0.30)
+            snd["combo"] = _gen_tone(659, 0.18, vol=0.35)
+            snd["death"] = _gen_sweep(440, 110, 0.35, vol=0.30)
+            snd["clear"] = _gen_sweep(392, 784, 0.40, vol=0.30)
+            snd["cheese"] = _gen_tone(1046, 0.07, vol=0.20)
+            snd["warn"] = _gen_sweep(300, 900, 0.15, vol=0.28)
+        except Exception:
+            snd = {}
 
     colors = {
         "bg": (128, 128, 128),
@@ -1568,7 +1594,7 @@ async def run_game() -> None:
     entering_initials = False
     entry_initials = ""
     initials_key_rects: list[tuple[str, pygame.Rect]] = []
-    sound_enabled = True
+    sound_enabled = not is_web
 
     # --- Virtual joystick touch state ---
     # Center the joystick horizontally in the left control lane so the large ring
@@ -1730,7 +1756,7 @@ async def run_game() -> None:
         whisker = (181, 172, 164)
         eye = (20, 20, 22)
 
-        pygame.draw.line(logical, tail, False, [(2, 10), (1, 8), (3, 7), (6, 8)], 1)
+        pygame.draw.lines(logical, tail, False, [(2, 10), (1, 8), (3, 7), (6, 8)], 1)
         pygame.draw.ellipse(logical, shadow, (6, 8, 10, 6))
         pygame.draw.ellipse(logical, body, (7, 7, 10, 5))
         pygame.draw.ellipse(logical, light, (9, 7, 6, 3))
@@ -1776,7 +1802,7 @@ async def run_game() -> None:
         nose = (255, 171, 157)
         whisker = (240, 233, 211)
 
-        pygame.draw.line(logical, shadow, False, [(2, 9), (1, 7), (3, 6), (6, 7)], 2)
+        pygame.draw.lines(logical, shadow, False, [(2, 9), (1, 7), (3, 6), (6, 7)], 2)
         pygame.draw.ellipse(logical, shadow, (6, 8, 10, 6))
         pygame.draw.ellipse(logical, fur, (7, 7, 10, 5))
         pygame.draw.ellipse(logical, light, (9, 7, 6, 3))
