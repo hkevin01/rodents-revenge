@@ -12,6 +12,8 @@ jobs:
   build-and-deploy:
     name: Build (pygbag → WebAssembly) and deploy
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Checkout source
@@ -181,7 +183,7 @@ jobs:
             white-space: pre-line;
             letter-spacing: 0.02em;
             z-index: 9999;
-            pointer-events: auto;
+            pointer-events: none;
             padding: 0;
           }
 

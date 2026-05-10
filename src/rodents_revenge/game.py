@@ -2361,7 +2361,7 @@ async def run_game() -> None:
                     play_r = pygame.Rect(0, 0, 420, 88)
                     play_r.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     play_hit_r = play_r.inflate(260, 140)
-                    if play_hit_r.collidepoint(sx, sy):
+                    if play_hit_r.collidepoint(sx, sy) or not touched_difficulty:
                         _start_from_title()
                 elif phase == "playing":
                     # HUD touch buttons
@@ -2566,7 +2566,7 @@ async def run_game() -> None:
                     play_r_m = pygame.Rect(0, 0, 420, 88)
                     play_r_m.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 112)
                     play_hit_m = play_r_m.inflate(260, 140)
-                    if play_hit_m.collidepoint(sx, sy):
+                    if play_hit_m.collidepoint(sx, sy) or not clicked_difficulty:
                         _start_from_title()
                 elif phase == "playing":
                     if _tbtn_pause_rect.collidepoint(sx, sy):
