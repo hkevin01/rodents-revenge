@@ -31,6 +31,8 @@ warnings.filterwarnings(
 
 GRID_WIDTH = 20
 GRID_HEIGHT = 15
+RELAXED_GRID_WIDTH = 16
+RELAXED_GRID_HEIGHT = 12
 TILE_SIZE = 40
 FPS = 60
 
@@ -423,6 +425,7 @@ class GameState:
     paused: bool = False
     cat_delay_bonus: int = 0
     cat_count_offset: int = 0
+    max_cats: int = 12
     last_block_push: tuple[int, int, int, int] | None = None
     near_clear_warned: bool = False
     pending_sounds: list[str] = field(default_factory=list)
@@ -462,7 +465,7 @@ class GameState:
         # Procedural fallback (extreme levels or seeded generation failed)
         wall_count = min(3 + level // 2, 10)
         block_count = min(64 + level * 10, 220)
-        cat_count = max(1, min(2 + level + self.cat_count_offset, 12))
+        cat_count = max(1, min(2 + level + self.cat_count_offset, self.max_cats))
         self.last_block_push = None
         self.near_clear_warned = False
 
@@ -518,7 +521,7 @@ class GameState:
         self._enforce_no_adjacent_blocks()
 
         base_cat_count = max(1, len(cat_spawns))
-        target_cat_count = max(1, base_cat_count + self.cat_count_offset)
+        target_cat_count = max(1, min(base_cat_count + self.cat_count_offset, self.max_cats))
         self.cats = self._find_outer_cat_spawns(target_cat_count, self.mouse_pos, preferred=cat_spawns)
 
         return True
@@ -1045,7 +1048,7 @@ class GameState:
         wall_segs  = tier_wall_segs[tier]
         block_cnt  = tier_block_cnt[tier]
         cheese_cnt = tier_cheese_cnt[tier]
-        cat_cnt    = max(1, tier_cat_cnt[tier] + self.cat_count_offset)
+        cat_cnt    = max(1, min(tier_cat_cnt[tier] + self.cat_count_offset, self.max_cats))
 
         for attempt in range(400):
             seed = level * 7919 + attempt
@@ -1650,6 +1653,19 @@ def _make_icon() -> pygame.Surface:
 
 async def run_game() -> None:
     is_web = sys.platform == "emscripten"
+
+    def _is_mobile_web() -> bool:
+        if not is_web:
+            return False
+        try:
+            import platform  # type: ignore[import]
+
+            ua = str(getattr(platform.window.navigator, "userAgent", "")).lower()
+            return any(token in ua for token in ("android", "iphone", "ipad", "mobile"))
+        except Exception:
+            return False
+
+    mobile_relaxed = _is_mobile_web()
     if not is_web:
         try:
             pygame.mixer.pre_init(22050, -16, 1, 512)
@@ -1728,11 +1744,11 @@ async def run_game() -> None:
 
     DIFFICULTIES = ["easy", "normal", "hard"]
     DIFF_SETTINGS: dict[str, dict[str, int]] = {
-        "easy":   {"cat_delay_bonus":   250, "cat_count_offset": -1},
-        "normal": {"cat_delay_bonus":     0, "cat_count_offset":  0},
-        "hard":   {"cat_delay_bonus":  -125, "cat_count_offset":  1},
+        "easy":   {"cat_delay_bonus":   700, "cat_count_offset": -2, "max_cats": 6},
+        "normal": {"cat_delay_bonus":     0, "cat_count_offset":  0, "max_cats": 12},
+        "hard":   {"cat_delay_bonus":  -125, "cat_count_offset":  1, "max_cats": 12},
     }
-    diff_idx = 1  # default: normal
+    diff_idx = 0 if mobile_relaxed else 1  # mobile defaults to easy
     TWEEN_FRAMES = 6
     block_tweens: list[dict] = []
     mouse_facing = 1   # +1 = right (default), -1 = left
@@ -1742,7 +1758,20 @@ async def run_game() -> None:
         from rodents_revenge.scores import load_scores, save_score, is_high_score
     except ImportError:  # flat-package mode inside pygbag / WASM
         from scores import load_scores, save_score, is_high_score  # type: ignore[no-redef]
-    state = GameState()
+    start_width = RELAXED_GRID_WIDTH if mobile_relaxed else GRID_WIDTH
+    start_height = RELAXED_GRID_HEIGHT if mobile_relaxed else GRID_HEIGHT
+    start_diff = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+    start_delay_bonus = start_diff["cat_delay_bonus"] + (350 if mobile_relaxed else 0)
+    start_cat_offset = start_diff["cat_count_offset"] - (1 if mobile_relaxed else 0)
+    start_max_cats = min(start_diff["max_cats"], 5) if mobile_relaxed else start_diff["max_cats"]
+
+    state = GameState(
+        width=start_width,
+        height=start_height,
+        cat_delay_bonus=start_delay_bonus,
+        cat_count_offset=start_cat_offset,
+        max_cats=start_max_cats,
+    )
     cat_ms_accum = 0
     countdown_ms = COUNTDOWN_TOTAL_MS
     dt_ms = 0
@@ -2506,9 +2535,17 @@ async def run_game() -> None:
         nonlocal state, cat_ms_accum, countdown_ms, score_saved, new_high_score
         nonlocal entering_initials, entry_initials, show_help, phase
         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+        board_w = RELAXED_GRID_WIDTH if mobile_relaxed else GRID_WIDTH
+        board_h = RELAXED_GRID_HEIGHT if mobile_relaxed else GRID_HEIGHT
+        cat_delay_bonus = s["cat_delay_bonus"] + (350 if mobile_relaxed else 0)
+        cat_count_offset = s["cat_count_offset"] - (1 if mobile_relaxed else 0)
+        max_cats = min(s["max_cats"], 5) if mobile_relaxed else s["max_cats"]
         state = GameState(
-            cat_delay_bonus=s["cat_delay_bonus"],
-            cat_count_offset=s["cat_count_offset"],
+            width=board_w,
+            height=board_h,
+            cat_delay_bonus=cat_delay_bonus,
+            cat_count_offset=cat_count_offset,
+            max_cats=max_cats,
         )
         cat_ms_accum = 0
         countdown_ms = COUNTDOWN_TOTAL_MS
@@ -2653,9 +2690,17 @@ async def run_game() -> None:
                 elif phase == "title":
                     if event.key == pygame.K_RETURN:
                         s = DIFF_SETTINGS[DIFFICULTIES[diff_idx]]
+                        board_w = RELAXED_GRID_WIDTH if mobile_relaxed else GRID_WIDTH
+                        board_h = RELAXED_GRID_HEIGHT if mobile_relaxed else GRID_HEIGHT
+                        cat_delay_bonus = s["cat_delay_bonus"] + (350 if mobile_relaxed else 0)
+                        cat_count_offset = s["cat_count_offset"] - (1 if mobile_relaxed else 0)
+                        max_cats = min(s["max_cats"], 5) if mobile_relaxed else s["max_cats"]
                         state = GameState(
-                            cat_delay_bonus=s["cat_delay_bonus"],
-                            cat_count_offset=s["cat_count_offset"],
+                            width=board_w,
+                            height=board_h,
+                            cat_delay_bonus=cat_delay_bonus,
+                            cat_count_offset=cat_count_offset,
+                            max_cats=max_cats,
                         )
                         cat_ms_accum = 0
                         countdown_ms = COUNTDOWN_TOTAL_MS

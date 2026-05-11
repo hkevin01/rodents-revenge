@@ -395,6 +395,20 @@ def test_difficulty_cat_count_offset() -> None:
     assert len(normal.cats) == 1
 
 
+def test_max_cats_cap_applies_to_preset_levels() -> None:
+    state = GameState(max_cats=1)
+    state.reset_level(9)
+    assert len(state.cats) == 1
+
+
+def test_smaller_board_generation_respects_cat_cap() -> None:
+    state = GameState(width=16, height=12, max_cats=3)
+    state.reset_level(25)
+    assert state.width == 16
+    assert state.height == 12
+    assert len(state.cats) <= 3
+
+
 def test_difficulty_cat_delay_bonus_stored() -> None:
     state = GameState(cat_delay_bonus=3)
     assert state.cat_delay_bonus == 3
